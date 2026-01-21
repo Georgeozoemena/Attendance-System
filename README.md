@@ -1,1 +1,1 @@
-# Attendance System using QRCode
+# Attendance System
