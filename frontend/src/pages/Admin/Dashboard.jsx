@@ -21,6 +21,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('live'); // 'live' | 'analysis' | 'qrcode'
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [eventFilter, setEventFilter] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   // ... (SSE subscription and onResize code remains the same) ... //
 
@@ -79,6 +81,20 @@ export default function AdminDashboard() {
   }, []);
 
   // export current items to CSV
+  // Export helpers
+  const getExportData = (rows) => {
+    if (!rows || !rows.length) return [];
+    return rows.map(r => ({
+      Time: r.createdAt,
+      Name: r.name,
+      Email: r.email,
+      Phone: r.phone,
+      FirstTimer: r.firstTimer ? 'Yes' : 'No',
+      Dept: r.department || '-',
+      Event: r.eventId
+    }));
+  };
+
   function downloadCsv(rows) {
     if (!rows || !rows.length) return;
     const headers = ['createdAt', 'id', 'eventId', 'name', 'email', 'phone', 'address', 'occupation', 'firstTimer', 'gender', 'nationality', 'department', 'deviceId'];
@@ -86,7 +102,6 @@ export default function AdminDashboard() {
     for (const r of rows) {
       const vals = headers.map((h) => {
         const v = r[h] === undefined || r[h] === null ? '' : String(r[h]);
-        // escape quotes
         return `"${v.replace(/"/g, '""')}"`
       });
       lines.push(vals.join(','));
@@ -102,19 +117,86 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadExcel(rows) {
+    if (!rows || !rows.length) return;
+    try {
+      if (!window.XLSX) {
+        alert('Excel library not loaded yet. Please try again in a moment.');
+        return;
+      }
+      const wb = window.XLSX.utils.book_new();
+      const ws = window.XLSX.utils.json_to_sheet(rows);
+      window.XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+      window.XLSX.writeFile(wb, `attendance_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error('Excel export failed', err);
+      alert('Failed to export Excel. Fallback to CSV.');
+      downloadCsv(rows);
+    }
+  }
+
+  function downloadPdf(rows) {
+    if (!rows || !rows.length) return;
+    try {
+      if (!window.jspdf) {
+        alert('PDF library not loaded yet.');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.text("Attendance Report", 14, 22);
+
+      doc.setFontSize(11);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+
+      const tableColumn = ["Time", "Name", "Email", "Phone", "First Timer", "Dept", "Event"];
+      const tableRows = rows.map(r => [
+        r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '-',
+        r.name,
+        r.email,
+        r.phone,
+        r.firstTimer ? 'Yes' : 'No',
+        r.department || '-',
+        r.eventId
+      ]);
+
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 40,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [30, 64, 175] } // Blue primary
+      });
+
+      doc.save(`attendance_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed', err);
+      alert('Failed to generate PDF. Try printing instead.');
+      window.print();
+    }
+  }
+
   // ability to fetch rows filtered by eventId (manual)
-  async function fetchByEvent() {
-    if (!eventFilter) return;
+  async function fetchByEvent(customEventId) {
+    const targetEvent = customEventId || eventFilter;
+    if (!targetEvent) return;
     setLoadingHistory(true);
     try {
       const params = new URLSearchParams();
-      params.set('eventId', eventFilter);
+      params.set('eventId', targetEvent);
       const resp = await fetch(`/api/attendance?${params.toString()}`);
       if (!resp.ok) throw new Error('Failed to fetch');
       const data = await resp.json();
       if (Array.isArray(data)) {
-        setItems((s) => [...data.reverse(), ...s]);
+        setItems(data.reverse()); // Replace items or append? User implied filtering, so maybe replace is better, or just show filtered.
+        // For now, let's keep the behavior of just loading them.
+        // Actually, to make it a true filter, we might want to plain replace 'items' or filter the existing 'items'.
+        // But since we are fetching from backend, let's treat it as a fresh load.
+        // However, the previous logic was appending. Let's strictly follow the "Load event" logic but inside the modal.
       }
+      setShowFilterModal(false);
     } catch (err) {
       console.warn('Failed to fetch by event', err);
       alert('Failed to load event history. Check backend support for the endpoint.');
@@ -125,46 +207,55 @@ export default function AdminDashboard() {
 
   return (
     <div className='admin-dashboard'>
-      <div className="form-header admin-header" style={{ marginBottom: 16 }}>
-        <h1><span>Admin</span><br />Live Overview</h1>
-        <p className="helper">New submissions appear here in real time. Use the tabs to view analysis and tools.</p>
+      <div className="form-header admin-header" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1><span>Admin Dashboard</span><br />Overview</h1>
+        <p className="helper" style={{ textAlign: 'right' }}>New submissions appear here in real time. Use the tabs to view analysis and tools.</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className='admin-tabs-btns' style={{ display: 'flex', alignSelf: 'center', justifySelf: 'center', gap: 8 }}>
           <button
-            className={`tab-btn ${activeTab === 'live' ? '' : 'inactive'}`}
+            className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`}
             onClick={() => setActiveTab('live')}
           >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
             Live Data
           </button>
           <button
-            className={`tab-btn ${activeTab === 'analysis' ? '' : 'inactive'}`}
+            className={`tab-btn ${activeTab === 'analysis' ? 'active' : ''}`}
             onClick={() => setActiveTab('analysis')}
           >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
             Analytics
           </button>
           <button
-            className={`tab-btn ${activeTab === 'qrcode' ? '' : 'inactive'}`}
+            className={`tab-btn ${activeTab === 'qrcode' ? 'active' : ''}`}
             onClick={() => setActiveTab('qrcode')}
           >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
             QR Generator
           </button>
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            className="input"
-            placeholder="Filter by eventId (optional)"
-            value={eventFilter}
-            onChange={(e) => setEventFilter(e.target.value)}
-            style={{ width: 220 }}
-          />
-          <button className="btn-ghost" onClick={fetchByEvent} disabled={loadingHistory || !eventFilter}>
-            {loadingHistory ? 'Loading...' : 'Load event'}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn-ghost" onClick={() => setShowFilterModal(true)}>
+            Filter
           </button>
-          <button className="btn-ghost" onClick={() => downloadCsv(items)} title="Export visible rows">
-            Export CSV
+          <button className="btn-ghost" onClick={() => setShowExportModal(true)}>
+            Export
           </button>
         </div>
       </div>
@@ -178,38 +269,64 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {showExportModal && (
+        <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Export Data</h3>
+            <p className="helper">Choose a format to download the attendance data.</p>
+            <div className="modal-actions">
+              <button className="modal-btn primary" onClick={() => { downloadCsv(items); setShowExportModal(false); }}>
+                Download CSV
+              </button>
+              <button className="modal-btn" onClick={() => { downloadExcel(items); setShowExportModal(false); }}>
+                Download Excel (.xlsx)
+              </button>
+              <button className="modal-btn" onClick={() => { downloadPdf(items); setShowExportModal(false); }}>
+                Download PDF
+              </button>
+            </div>
+            <button className="modal-close" onClick={() => setShowExportModal(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {showFilterModal && (
+        <div className="modal-overlay" onClick={() => setShowFilterModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Filter Data</h3>
+            <p className="helper">Load historical data for a specific event.</p>
+            <div style={{ marginTop: 16 }}>
+              <label className="small" style={{ display: 'block', marginBottom: 6 }}>Event ID</label>
+              <input
+                className="input"
+                placeholder="e.g. 2026-01-25-morning"
+                value={eventFilter}
+                onChange={(e) => setEventFilter(e.target.value)}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="modal-btn primary"
+                disabled={loadingHistory || !eventFilter}
+                onClick={() => fetchByEvent(eventFilter)}
+              >
+                {loadingHistory ? 'Loading...' : 'Load Event Data'}
+              </button>
+            </div>
+            <button className="modal-close" onClick={() => setShowFilterModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Subcomponents moved outside or kept inline, simplified for the edit
+// Responsive Table component
+function LiveTable({ items }) {
+  // Responsive behavior is now handled purely by CSS using media queries
+  // and data-label attributes for mobile stacking.
 
-
-function LiveTable({ items, isMobile }) {
-  if (isMobile) {
-    // Stacked card layout for mobile
-    return (
-      <div style={{ display: 'grid', gap: 12 }}>
-        {items.length === 0 && <div className="small">No submissions yet</div>}
-        {items.map((row, i) => (
-          <div key={row.id || i} className="card" style={{ padding: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div className="small">{row.createdAt}</div>
-              <div className="small">{row.eventId}</div>
-            </div>
-            <div style={{ fontWeight: 700 }}>{row.name}</div>
-            <div className="small">{row.email} • {row.phone}</div>
-            <div style={{ marginTop: 8 }}>
-              <span className="helper">First Timer: </span><strong>{row.firstTimer ? 'Yes' : 'No'}</strong>
-            </div>
-            {row.department && <div className="small" style={{ marginTop: 6 }}>Dept: {row.department}</div>}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // Desktop table view
   return (
     <div className="table-responsive">
       <table className="table" aria-label="Live attendance table">
@@ -227,18 +344,18 @@ function LiveTable({ items, isMobile }) {
         <tbody>
           {items.length === 0 && (
             <tr>
-              <td colSpan="7" className="small">No submissions yet</td>
+              <td colSpan="7" className="small" style={{ textAlign: 'center' }}>No submissions yet</td>
             </tr>
           )}
           {items.map((row, i) => (
             <tr key={row.id || i}>
-              <td>{row.createdAt}</td>
-              <td>{row.name}</td>
-              <td>{row.email}</td>
-              <td>{row.phone}</td>
-              <td>{row.firstTimer ? 'Yes' : 'No'}</td>
-              <td>{row.department || '-'}</td>
-              <td>{row.eventId}</td>
+              <td data-label="Time">{row.createdAt}</td>
+              <td data-label="Name" style={{ fontWeight: 600 }}>{row.name}</td>
+              <td data-label="Email">{row.email}</td>
+              <td data-label="Phone">{row.phone}</td>
+              <td data-label="First Timer">{row.firstTimer ? 'Yes' : 'No'}</td>
+              <td data-label="Department">{row.department || '-'}</td>
+              <td data-label="Event">{row.eventId}</td>
             </tr>
           ))}
         </tbody>
