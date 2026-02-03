@@ -8,9 +8,10 @@ const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export default function AnalyticsDashboard({ attendanceData }) {
     // Process data for charts
-    const { deptData, genderData, firstTimerData, trendData } = React.useMemo(() => {
+    const { deptData, genderData, firstTimerData, trendData, hourlyData } = React.useMemo(() => {
         const dCounts = {};
         const gCounts = {};
+        const hCounts = {}; // Key: "00" to "23", Value: count
         let ftYes = 0;
         let ftNo = 0;
         const tCounts = {}; // Key: "yyyy-mm-dd", Value: count
@@ -27,10 +28,18 @@ export default function AnalyticsDashboard({ attendanceData }) {
             // First Timer
             if (r.firstTimer) ftYes++; else ftNo++;
 
-            // Trend (by date)
+            // Trend & Hourly
             if (r.createdAt) {
-                const dateKey = new Date(r.createdAt).toISOString().split('T')[0];
+                const dateObj = new Date(r.createdAt);
+
+                // Trend
+                const dateKey = dateObj.toISOString().split('T')[0];
                 tCounts[dateKey] = (tCounts[dateKey] || 0) + 1;
+
+                // Hourly
+                const hour = dateObj.getHours(); // 0-23
+                const hourKey = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+                hCounts[hourKey] = (hCounts[hourKey] || 0) + 1;
             }
         });
 
@@ -45,7 +54,10 @@ export default function AnalyticsDashboard({ attendanceData }) {
         // Sort trends by date
         const trend = Object.keys(tCounts).sort().map(k => ({ date: k, count: tCounts[k] }));
 
-        return { deptData: dept, genderData: gender, firstTimerData: firstTimer, trendData: trend };
+        // Sort hourly 00:00 -> 23:00
+        const hourly = Object.keys(hCounts).sort().map(k => ({ time: k, count: hCounts[k] }));
+
+        return { deptData: dept, genderData: gender, firstTimerData: firstTimer, trendData: trend, hourlyData: hourly };
     }, [attendanceData]);
 
     if (!attendanceData || attendanceData.length === 0) {
@@ -79,8 +91,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
                     <p className="metric-sub">New visitors</p>
                 </div>
 
-                {/* Card 3: Today's (Simulated based on latest date in data or just count) */}
-                {/* For now, let's show Departments count as a metric */}
+                {/* Card 3: Departments */}
                 <div className="card">
                     <h4>Departments</h4>
                     <p className="metric-value">{deptData.length}</p>
@@ -111,6 +122,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
                                     tick={{ fontSize: 12, fill: '#64748b' }}
                                     tickLine={false}
                                     axisLine={false}
+                                    label={{ value: 'Attendees', angle: -90, position: 'insideLeft', fill: '#94a3b8' }}
                                 />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
@@ -182,29 +194,55 @@ export default function AnalyticsDashboard({ attendanceData }) {
                 </div>
             </div>
 
-            {/* Department Bar Chart */}
-            <div className="card mb-4" style={{ marginBottom: '24px' }}>
-                <h4>Attendance by Department</h4>
-                <div className="chart-container">
-                    <ResponsiveContainer>
-                        <BarChart data={deptData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis
-                                dataKey="name"
-                                tick={{ fontSize: 12, fill: '#64748b' }}
-                                tickLine={false}
-                                axisLine={{ stroke: '#e2e8f0' }}
-                            />
-                            <YAxis
-                                allowDecimals={false}
-                                tick={{ fontSize: 12, fill: '#64748b' }}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                            <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+            {/* Peak Hours & Departments */}
+            <div className="admin-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
+                {/* Peak Hours Bar Chart */}
+                <div className="card">
+                    <h4>Peak Hours</h4>
+                    <div className="chart-container">
+                        <ResponsiveContainer>
+                            <BarChart data={hourlyData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis
+                                    dataKey="time"
+                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#e2e8f0' }}
+                                />
+                                <YAxis
+                                    allowDecimals={false}
+                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                                <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Department Bar Chart */}
+                <div className="card">
+                    <h4>Attendance by Department</h4>
+                    <div className="chart-container">
+                        <ResponsiveContainer>
+                            <BarChart data={deptData} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                <XAxis type="number" hide />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    tick={{ fontSize: 11, fill: '#64748b' }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    width={100}
+                                />
+                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                                <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
         </div>

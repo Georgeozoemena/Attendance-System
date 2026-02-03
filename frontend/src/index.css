@@ -64,7 +64,7 @@ button {
   color: #1e293b;
 }
 
-.admin-tabs-btns button {
+.admin-tabs-btns .tab-btn {
   padding: 10px 20px;
   border: none;
   border-radius: 25px;
@@ -77,21 +77,24 @@ button {
   background-color: transparent;
   color: #64748b;
   border: 1px solid transparent;
+  text-decoration: none;
+  /* Ensure links don't have underlines */
+  font-size: 1rem;
+  /* Match button default if needed */
 }
 
-.admin-tabs-btns button:hover {
+.admin-tabs-btns .tab-btn:hover {
   background-color: #f1f5f9;
   color: #1e293b;
 }
 
-.admin-tabs-btns button.active {
+.admin-tabs-btns .tab-btn.active {
   background-color: #00359E;
   color: #ffffff;
   opacity: 1;
-  /* Reset opacity from previous rules if any */
 }
 
-.admin-tabs-btns button.active:hover {
+.admin-tabs-btns .tab-btn.active:hover {
   background-color: #002a80;
 }
 
@@ -385,4 +388,53 @@ button {
   width: 100%;
   height: 300px;
   margin-top: 16px;
+}
+
+/* QR Generator */
+.qr-generator-container {
+  height: calc(100vh - 300px);
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-card {
+  max-width: 450px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.qr-code-wrapper {
+  display: inline-block;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.qr-link-box {
+  margin-top: 24px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+  color: #64748b;
+  word-break: break-all;
+}
+
+.qr-link-label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
 }

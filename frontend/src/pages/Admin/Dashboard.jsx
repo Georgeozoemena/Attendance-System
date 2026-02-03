@@ -1,103 +1,32 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { connectToSSE } from '../../services/realtime.js';
-
-/*
-  Responsive Admin Dashboard with tabs:
-  - Live: real-time table (or stacked cards on small screens)
-  - Analysis: simple aggregated statistics and CSV export
-
-  Notes:
-  - Attempts to load historical rows from GET /api/attendance on mount (best-effort).
-  - SSE still supplies live updates.
-  - If your backend supports a dedicated admin/history endpoint, you can change the fetch URL below.
-*/
+import React, { useState } from 'react';
+import { useAttendanceData } from '../../hooks/useAttendanceData.js';
 
 import AdminQRGenerator from '../../components/Admin/AdminQRGenerator.jsx';
 import AnalyticsDashboard from '../../components/Admin/AnalyticsDashboard.jsx';
+import AttendanceCategoryView from '../../components/Admin/AttendanceCategoryView.jsx';
+import DashboardHeader from '../../components/Admin/DashboardHeader.jsx';
+import LiveTable from '../../components/Admin/LiveTable.jsx';
+
+/*
+  Responsive Admin Dashboard
+  Refactored to use:
+  - useAttendanceData hook for logic
+  - DashboardHeader for navigation
+  - LiveTable for the data grid
+*/
 
 export default function AdminDashboard() {
-  const [items, setItems] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState('live'); // 'live' | 'analysis' | 'qrcode'
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  const { items, loadingHistory, fetchByEvent } = useAttendanceData();
+
+  const [activeTab, setActiveTab] = useState('live'); // 'live' | 'analysis' | 'categories' | 'qrcode'
   const [eventFilter, setEventFilter] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  // ... (SSE subscription and onResize code remains the same) ... //
-
-  // SSE subscription for live updates
-  useEffect(() => {
-    const es = connectToSSE('/api/admin/stream');
-    es.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        setItems((s) => [data, ...s]);
-      } catch (err) {
-        console.error('Invalid SSE payload', err);
-      }
-    };
-    es.onerror = (err) => {
-      console.error('SSE error', err);
-    };
-    return () => es.close();
-  }, []);
-
-  // responsive detection
-  useEffect(() => {
-    function onResize() {
-      setIsMobile(window.innerWidth < 640);
-    }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // initial (best-effort) load of historical rows
-  useEffect(() => {
-    async function loadHistory() {
-      setLoadingHistory(true);
-      try {
-        // Best-effort: try to fetch all rows. Backend may require params.
-        const resp = await fetch('/api/attendance');
-        if (!resp.ok) {
-          // try fallback: fetch without params may return 404 or empty
-          setLoadingHistory(false);
-          return;
-        }
-        const data = await resp.json();
-        if (Array.isArray(data) && data.length) {
-          // prepend historical items so newer SSE items still appear on top
-          setItems((s) => [...(data.reverse ? data.reverse() : data), ...s]);
-        }
-      } catch (err) {
-        // ignore; SSE will still provide live data
-        console.warn('Failed to load history', err);
-      } finally {
-        setLoadingHistory(false);
-      }
-    }
-
-    loadHistory();
-  }, []);
-
-  // export current items to CSV
-  // Export helpers
-  const getExportData = (rows) => {
-    if (!rows || !rows.length) return [];
-    return rows.map(r => ({
-      Time: r.createdAt,
-      Name: r.name,
-      Email: r.email,
-      Phone: r.phone,
-      FirstTimer: r.firstTimer ? 'Yes' : 'No',
-      Dept: r.department || '-',
-      Event: r.eventId
-    }));
-  };
-
+  // --- Export Helpers ---
   function downloadCsv(rows) {
     if (!rows || !rows.length) return;
-    const headers = ['createdAt', 'id', 'eventId', 'name', 'email', 'phone', 'address', 'occupation', 'firstTimer', 'gender', 'nationality', 'department', 'deviceId'];
+    const headers = ['createdAt', 'uniqueCode', 'id', 'eventId', 'name', 'email', 'phone', 'address', 'occupation', 'firstTimer', 'gender', 'nationality', 'department', 'deviceId'];
     const lines = [headers.join(',')];
     for (const r of rows) {
       const vals = headers.map((h) => {
@@ -151,9 +80,10 @@ export default function AdminDashboard() {
       doc.setFontSize(11);
       doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
 
-      const tableColumn = ["Time", "Name", "Email", "Phone", "First Timer", "Dept", "Event"];
+      const tableColumn = ["Time", "Code", "Name", "Email", "Phone", "First Timer", "Dept", "Event"];
       const tableRows = rows.map(r => [
         r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '-',
+        r.uniqueCode || '-',
         r.name,
         r.email,
         r.phone,
@@ -178,91 +108,25 @@ export default function AdminDashboard() {
     }
   }
 
-  // ability to fetch rows filtered by eventId (manual)
-  async function fetchByEvent(customEventId) {
-    const targetEvent = customEventId || eventFilter;
-    if (!targetEvent) return;
-    setLoadingHistory(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('eventId', targetEvent);
-      const resp = await fetch(`/api/attendance?${params.toString()}`);
-      if (!resp.ok) throw new Error('Failed to fetch');
-      const data = await resp.json();
-      if (Array.isArray(data)) {
-        setItems(data.reverse()); // Replace items or append? User implied filtering, so maybe replace is better, or just show filtered.
-        // For now, let's keep the behavior of just loading them.
-        // Actually, to make it a true filter, we might want to plain replace 'items' or filter the existing 'items'.
-        // But since we are fetching from backend, let's treat it as a fresh load.
-        // However, the previous logic was appending. Let's strictly follow the "Load event" logic but inside the modal.
-      }
-      setShowFilterModal(false);
-    } catch (err) {
-      console.warn('Failed to fetch by event', err);
-      alert('Failed to load event history. Check backend support for the endpoint.');
-    } finally {
-      setLoadingHistory(false);
-    }
-  }
+  // --- Handlers ---
+  const handleFilterLoad = () => {
+    fetchByEvent(eventFilter);
+    setShowFilterModal(false);
+  };
 
   return (
     <div className='admin-dashboard'>
-      <div className="form-header admin-header" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1><span>Admin Dashboard</span><br />Overview</h1>
-        <p className="helper" style={{ textAlign: 'right' }}>New submissions appear here in real time. Use the tabs to view analysis and tools.</p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
-        <div className='admin-tabs-btns' style={{ display: 'flex', alignSelf: 'center', justifySelf: 'center', gap: 8 }}>
-          <button
-            className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`}
-            onClick={() => setActiveTab('live')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            Live Data
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'analysis' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analysis')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-            Analytics
-          </button>
-          <button
-            className={`tab-btn ${activeTab === 'qrcode' ? 'active' : ''}`}
-            onClick={() => setActiveTab('qrcode')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-            QR Generator
-          </button>
-        </div>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-ghost" onClick={() => setShowFilterModal(true)}>
-            Filter
-          </button>
-          <button className="btn-ghost" onClick={() => setShowExportModal(true)}>
-            Export
-          </button>
-        </div>
-      </div>
+      <DashboardHeader
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onFilter={() => setShowFilterModal(true)}
+        onExport={() => setShowExportModal(true)}
+      />
 
       <div className="attendance-form" style={{ marginTop: 8, background: activeTab === 'qrcode' ? 'transparent' : 'var(--card)' }}>
-        {activeTab === 'live' && <LiveTable items={items} isMobile={isMobile} />}
+        {activeTab === 'live' && <LiveTable items={items} />}
         {activeTab === 'analysis' && <AnalyticsDashboard attendanceData={items} />}
+        {activeTab === 'categories' && <AttendanceCategoryView data={items} />}
         {activeTab === 'qrcode' && (
           <div className="animate-fade-in">
             <AdminQRGenerator eventId={eventFilter || 'default-event'} />
@@ -309,7 +173,7 @@ export default function AdminDashboard() {
               <button
                 className="modal-btn primary"
                 disabled={loadingHistory || !eventFilter}
-                onClick={() => fetchByEvent(eventFilter)}
+                onClick={handleFilterLoad}
               >
                 {loadingHistory ? 'Loading...' : 'Load Event Data'}
               </button>
@@ -318,48 +182,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Responsive Table component
-function LiveTable({ items }) {
-  // Responsive behavior is now handled purely by CSS using media queries
-  // and data-label attributes for mobile stacking.
-
-  return (
-    <div className="table-responsive">
-      <table className="table" aria-label="Live attendance table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>First Timer</th>
-            <th>Department</th>
-            <th>Event</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 && (
-            <tr>
-              <td colSpan="7" className="small" style={{ textAlign: 'center' }}>No submissions yet</td>
-            </tr>
-          )}
-          {items.map((row, i) => (
-            <tr key={row.id || i}>
-              <td data-label="Time">{row.createdAt}</td>
-              <td data-label="Name" style={{ fontWeight: 600 }}>{row.name}</td>
-              <td data-label="Email">{row.email}</td>
-              <td data-label="Phone">{row.phone}</td>
-              <td data-label="First Timer">{row.firstTimer ? 'Yes' : 'No'}</td>
-              <td data-label="Department">{row.department || '-'}</td>
-              <td data-label="Event">{row.eventId}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

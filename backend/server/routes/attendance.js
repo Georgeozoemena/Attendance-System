@@ -2,12 +2,30 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const SheetsClient = require('../sheetsClient');
+const auth = require('../middleware/auth');
 
 const sseClients = [];
 
-// GET /api/attendance?email=...&phone=...&eventId=...
-router.get('/attendance', async (req, res) => {
+// GET /api/attendance (Admin History)
+router.get('/attendance', auth, async (req, res) => {
+  const { eventId } = req.query;
+  try {
+    // If we want ALL records when no eventId, GAS doGet needs update, 
+    // but for now we follow the existing pattern.
+    const rows = await SheetsClient.lookup({ eventId });
+    res.json(rows);
+  } catch (err) {
+    console.error('History fetch failed', err);
+    res.status(500).json({ error: 'fetch failed' });
+  }
+});
+
+// GET /api/lookup (Public Lookup - e.g. for prefill)
+router.get('/lookup', async (req, res) => {
   const { email, phone, eventId } = req.query;
+  if (!email && !phone) {
+    return res.status(400).json({ error: 'email or phone required for lookup' });
+  }
   try {
     const rows = await SheetsClient.lookup({ email, phone, eventId });
     res.json(rows);
@@ -42,7 +60,7 @@ router.post('/attendance', async (req, res) => {
 });
 
 // SSE endpoint for admin dashboard
-router.get('/admin/stream', (req, res) => {
+router.get('/admin/stream', auth, (req, res) => {
   res.set({
     'Content-Type': 'text/event-stream',
     Connection: 'keep-alive',

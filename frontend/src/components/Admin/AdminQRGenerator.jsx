@@ -40,22 +40,15 @@ export default function AdminQRGenerator({ eventId }) {
     };
 
     return (
-        <div className="qr-generator-container" style={{
-            height: 'calc(100vh - 300px)',
-            overflowY: 'auto',
-            paddingRight: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-        }}>
-            <div className="card text-center" style={{ maxWidth: 450, width: '100%', margin: '0 auto' }}>
-                <h3 className="mb-4" style={{ fontSize: '1.25rem', color: '#1e293b' }}>Event QR Code</h3>
+        <div className="qr-generator-container">
+            <div className="card qr-card text-center">
+                <h3 className="mb-4" style={{ fontSize: '1.25rem' }}>Event QR Code</h3>
                 <p className="text-muted small mb-4">
                     Scan to mark attendance for event ID:<br />
                     <strong style={{ fontSize: '1.1rem', color: '#4f46e5' }}>{eventId}</strong>
                 </p>
 
-                <div ref={qrRef} className="mb-4 p-4 bg-white rounded border inline-block" style={{ display: 'inline-block', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                <div ref={qrRef} className="qr-code-wrapper">
                     <QRCodeCanvas
                         value={link}
                         size={250}
@@ -64,42 +57,17 @@ export default function AdminQRGenerator({ eventId }) {
                     />
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button onClick={downloadQR} className="btn primary-btn" style={{
-                        background: '#1e293b',
-                        color: 'white',
-                        padding: '10px 20px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                    }}>
+                <div className="qr-actions">
+                    <button onClick={downloadQR} className="modal-btn primary">
                         Download PNG
                     </button>
-                    <button onClick={printQR} className="btn" style={{
-                        background: 'white',
-                        color: '#1e293b',
-                        border: '1px solid #cbd5e1',
-                        padding: '10px 20px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: 500
-                    }}>
+                    <button onClick={printQR} className="modal-btn">
                         Print QR
                     </button>
                 </div>
 
-                <div style={{
-                    marginTop: '24px',
-                    padding: '12px',
-                    background: '#f8fafc',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '0.85rem',
-                    color: '#64748b',
-                    wordBreak: 'break-all'
-                }}>
-                    <span style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Direct Link:</span>
+                <div className="qr-link-box">
+                    <span className="qr-link-label">Direct Link:</span>
                     {link}
                 </div>
             </div>

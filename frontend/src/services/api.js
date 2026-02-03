@@ -16,7 +16,7 @@ export async function lookupAttendance({ email, phone, eventId }) {
   if (email) params.set('email', email);
   if (phone) params.set('phone', phone);
   if (eventId) params.set('eventId', eventId);
-  const res = await fetch(`/api/attendance?${params.toString()}`);
+  const res = await fetch(`/api/lookup?${params.toString()}`);
   if (!res.ok) return null;
   const data = await res.json();
   return data;
