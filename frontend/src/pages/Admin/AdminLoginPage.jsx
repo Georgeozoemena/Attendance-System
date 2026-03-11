@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import Header from '../../components/UI/Header.jsx';
 
 export default function AdminLoginPage() {
     const [password, setPassword] = useState('');
@@ -14,7 +13,7 @@ export default function AdminLoginPage() {
         setError('');
 
         try {
-            const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/auth/login`, {
+            const resp = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })
@@ -23,121 +22,82 @@ export default function AdminLoginPage() {
             const data = await resp.json();
 
             if (resp.ok && data.success) {
-                localStorage.setItem('adminKey', data.token);
+                // Store the raw password — this is what the auth middleware compares against
+                localStorage.setItem('adminKey', password);
+                // Set a 4-hour expiry
+                const expiryTime = Date.now() + (4 * 60 * 60 * 1000);
+                localStorage.setItem('adminTokenExpiry', expiryTime.toString());
                 navigate('/admin');
             } else {
-                setError(data.error || 'Invalid password');
+                setError(data.error || 'Invalid password. Please try again.');
             }
-        } catch (err) {
-            setError('Connection failed. Is the backend running?');
+        } catch {
+            setError('Could not connect to server. Make sure the backend is running.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="admin-login-container" style={containerStyle}>
-            <div className="login-card" style={cardStyle}>
-                <div className="login-header" style={{ textAlign: 'center', marginBottom: 30 }}>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#1e293b', marginBottom: 8 }}>Admin Access</h2>
-                    <p style={{ color: '#64748b' }}>Enter your password to manage attendance</p>
+        <div className="login-page">
+            <div className="login-box">
+                <div className="login-brand">
+                    <div className="login-brand-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                            <path d="M2 17l10 5 10-5" />
+                            <path d="M2 12l10 5 10-5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1>Dominion City</h1>
+                        <span>Olive Parish</span>
+                    </div>
                 </div>
 
-                <form onSubmit={handleLogin}>
-                    <div className="form-group" style={{ marginBottom: 20 }}>
-                        <label style={labelStyle}>Password</label>
+                <div className="login-divider" />
+
+                <h2>Admin Sign In</h2>
+                <p className="login-sub">Enter your admin password to access the dashboard.</p>
+
+                <form onSubmit={handleLogin} className="login-form">
+                    <div className="login-field">
+                        <label htmlFor="password">Password</label>
                         <input
+                            id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            style={inputStyle}
+                            placeholder="Enter your password"
                             required
                             autoFocus
                         />
                     </div>
 
-                    {error && <div className="error-msg" style={errorStyle}>{error}</div>}
+                    {error && (
+                        <div className="login-error">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            {error}
+                        </div>
+                    )}
 
                     <button
                         type="submit"
-                        disabled={loading}
-                        style={loading ? { ...buttonStyle, opacity: 0.7, cursor: 'not-allowed' } : buttonStyle}
+                        disabled={loading || !password}
+                        className="login-btn"
                     >
-                        {loading ? 'Authenticating...' : 'Login to Dashboard'}
+                        {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 
-                <div style={{ marginTop: 20, textAlign: 'center' }}>
-                    <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem' }}>
-                        ← Back to Public Site
-                    </button>
-                </div>
+                <button className="login-back" onClick={() => navigate('/')}>
+                    ← Back to check-in page
+                </button>
             </div>
         </div>
     );
 }
-
-const containerStyle = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-    padding: '20px'
-};
-
-const cardStyle = {
-    background: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(10px)',
-    padding: '40px',
-    borderRadius: '24px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    width: '100%',
-    maxWidth: '400px',
-    border: '1px solid rgba(255, 255, 255, 0.5)'
-};
-
-const labelStyle = {
-    display: 'block',
-    marginBottom: '8px',
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    color: '#475569'
-};
-
-const inputStyle = {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    border: '1px solid #e2e8f0',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    background: '#f8fafc'
-};
-
-const buttonStyle = {
-    width: '100%',
-    padding: '14px',
-    borderRadius: '12px',
-    border: 'none',
-    background: '#1e293b',
-    color: 'white',
-    fontWeight: 600,
-    fontSize: '1rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-};
-
-const errorStyle = {
-    color: '#e11d48',
-    backgroundColor: '#fff1f2',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '0.85rem',
-    marginBottom: '20px',
-    textAlign: 'center',
-    border: '1px solid #ffe4e6'
-};

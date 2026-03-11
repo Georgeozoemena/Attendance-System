@@ -20,7 +20,7 @@ export function getUser(phone) {
   try {
     const raw = localStorage.getItem(userKey(phone));
     return raw ? JSON.parse(raw) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -29,8 +29,7 @@ export function getLatest(eventId) {
   try {
     const raw = localStorage.getItem(latestKey(eventId));
     return raw ? JSON.parse(raw) : null;
-    // eslint-disable-next-line no-unused-vars
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -51,7 +50,6 @@ export async function tryFlushQueue() {
   for (const k of keys) {
     const arr = JSON.parse(localStorage.getItem(k) || '[]');
     if (!arr.length) continue;
-    const eventId = k.split(':')[1];
     const remaining = [];
 
     for (const item of arr) {
@@ -62,7 +60,7 @@ export async function tryFlushQueue() {
         if (item.phone) {
           saveUser(item.phone, item);
         }
-      } catch (err) {
+      } catch {
         remaining.push(item);
       }
     }

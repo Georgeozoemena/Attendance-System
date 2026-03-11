@@ -15,6 +15,11 @@
   "author": "",
   "license": "ISC",
   "description": "",
+  "dependencies": {
+    "nodemailer": "^6.10.0",
+    "qrcode": "^1.5.4",
+    "sqlite3": "^5.1.7"
+  },
   "devDependencies": {
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",

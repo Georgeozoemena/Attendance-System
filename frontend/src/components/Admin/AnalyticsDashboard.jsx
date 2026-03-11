@@ -180,7 +180,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
                                     cy="50%"
                                     outerRadius={100}
                                     dataKey="value"
-                                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                                 >
                                     {firstTimerData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={index === 0 ? '#b91010ff' : '#4f46e5'} />

@@ -35,15 +35,20 @@ export function useAttendanceData() {
                         'x-admin-key': adminKey || ''
                     }
                 });
+                if (resp.status === 401) {
+                    localStorage.removeItem('adminKey');
+                    window.location.href = '/admin/login';
+                    return;
+                }
                 if (!resp.ok) {
-                    // Fallback or empty state
                     setLoadingHistory(false);
                     return;
                 }
                 const data = await resp.json();
                 if (Array.isArray(data) && data.length) {
-                    // Prepend historical items
-                    setItems((s) => [...(data.reverse ? data.reverse() : data), ...s]);
+                    // Prepend historical items (create new array to avoid mutation)
+                    const reversedData = [...data].reverse();
+                    setItems((s) => [...reversedData, ...s]);
                 }
             } catch (err) {
                 console.warn('Failed to load history', err);
@@ -68,14 +73,17 @@ export function useAttendanceData() {
                     'x-admin-key': adminKey || ''
                 }
             });
+            if (resp.status === 401) {
+                localStorage.removeItem('adminKey');
+                window.location.href = '/admin/login';
+                return;
+            }
             if (!resp.ok) throw new Error('Failed to fetch');
             const data = await resp.json();
             if (Array.isArray(data)) {
-                // For filtered views, we might want to replace the current items or handle it differently.
-                // For simplicity in this structure, we replace the items to show only that event's data.
-                // Note: Real-time updates might still come in for *other* events, effectively "polluting" this filtered view.
-                // A robust solution would filter the incoming SSE messages too.
-                setItems(data.reverse());
+                // For filtered views, we replace the items to show only that event's data.
+                // Use spread to avoid mutating the original array.
+                setItems([...data].reverse());
             }
         } catch (err) {
             console.warn('Failed to fetch by event', err);

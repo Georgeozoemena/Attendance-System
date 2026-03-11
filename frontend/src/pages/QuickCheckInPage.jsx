@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { lookupAttendance, postAttendance } from '../services/api';
+import { lookupAttendance } from '../services/api';
 import { getUser, saveUser, queueAdd, tryFlushQueue } from '../services/localCache';
 import Toast from '../components/UI/Toast.jsx';
 
@@ -67,7 +67,7 @@ export default function QuickCheckInPage() {
                 try {
                     await tryFlushQueue();
                     setSuccess(`Welcome back, ${user.name}! Checked in.`);
-                } catch (err) {
+                } catch {
                     // If sync fails, it's still queued locally, so we consider it "successful" for the user
                     setSuccess(`Welcome back, ${user.name}! (Offline: Queued for sync)`);
                 }
@@ -87,8 +87,8 @@ export default function QuickCheckInPage() {
                 }, 2500);
             }
 
-        } catch (err) {
-            console.error(err);
+        } catch {
+            console.error('Check-in error');
             setToast({ message: 'Something went wrong. Please use the full form.', type: 'error' });
         } finally {
             setLoading(false);

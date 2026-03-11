@@ -10,7 +10,7 @@ import QuickCheckInPage from './pages/QuickCheckInPage.jsx';
 import AdminLayout from './pages/Admin/AdminLayout.jsx';
 import AdminLoginPage from './pages/Admin/AdminLoginPage.jsx';
 import ProtectedRoute from './components/Admin/ProtectedRoute.jsx';
-import { AdminLive, AdminAnalytics, AdminCategories, AdminQR } from './pages/Admin/AdminWrapper.jsx';
+import { AdminLive, AdminAnalytics, AdminCategories, AdminQR, AdminMessages, AdminMembers, AdminAbsentees, AdminEvents } from './pages/Admin/AdminWrapper.jsx';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -29,8 +29,11 @@ createRoot(document.getElementById('root')).render(
               <Route index element={<Navigate to="live" replace />} />
               <Route path="live" element={<AdminLive />} />
               <Route path="analysis" element={<AdminAnalytics />} />
-              <Route path="categories" element={<AdminCategories />} />
+              <Route path="events" element={<AdminEvents />} />
               <Route path="qrcode" element={<AdminQR />} />
+              <Route path="members" element={<AdminMembers />} />
+              <Route path="absentees" element={<AdminAbsentees />} />
+
             </Route>
           </Route>
         </Route>

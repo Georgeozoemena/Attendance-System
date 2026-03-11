@@ -1,13 +1,11 @@
 import React from 'react';
 import AttendanceForm from '../components/Form/AttendanceForm.jsx';
-import { useLocation } from 'react-router-dom';
-
-function useQuery() {
-  return new URLSearchParams(useLocation().search);
-}
+import { useSearchParams } from 'react-router-dom';
 
 export default function AttendanceFormPage() {
-  const q = useQuery();
-  const eventId = q.get('eventId') || 'default-event';
-  return <AttendanceForm eventId={eventId} />;
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get('eventId') || 'default-event';
+  const type = searchParams.get('type') || 'member';
+
+  return <AttendanceForm eventId={eventId} type={type} />;
 }

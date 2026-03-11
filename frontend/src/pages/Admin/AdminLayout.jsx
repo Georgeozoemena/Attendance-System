@@ -1,19 +1,31 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { Outlet } from 'react-router-dom';
 import { useAttendanceData } from '../../hooks/useAttendanceData.js';
 import DashboardHeader from '../../components/Admin/DashboardHeader.jsx';
+import Sidebar from '../../components/Admin/Sidebar.jsx';
+import TopNavbar from '../../components/Admin/TopNavbar.jsx';
 
 export default function AdminLayout() {
     const { items, loadingHistory, fetchByEvent } = useAttendanceData();
     const [showExportModal, setShowExportModal] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [eventFilter, setEventFilter] = useState('');
-    const location = useLocation();
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Map current path to active tab for header highlighting
-    const activeTab = location.pathname.split('/').pop() || 'live';
+    // Global search logic
+    const filteredItems = useMemo(() => {
+        if (!searchQuery) return items;
+        const q = searchQuery.toLowerCase();
+        return items.filter(item =>
+            (item.name?.toLowerCase().includes(q)) ||
+            (item.email?.toLowerCase().includes(q)) ||
+            (item.phone?.includes(q)) ||
+            (item.uniqueCode?.toLowerCase().includes(q)) ||
+            (item.department?.toLowerCase().includes(q))
+        );
+    }, [items, searchQuery]);
 
-    // --- Export Helpers (Same as before) ---
+    // --- Export Helpers ---
     function downloadCsv(rows) {
         if (!rows || !rows.length) return;
         const headers = ['createdAt', 'uniqueCode', 'id', 'eventId', 'name', 'email', 'phone', 'address', 'occupation', 'firstTimer', 'gender', 'nationality', 'department', 'deviceId'];
@@ -87,7 +99,7 @@ export default function AdminLayout() {
                 body: tableRows,
                 startY: 40,
                 styles: { fontSize: 8 },
-                headStyles: { fillColor: [30, 64, 175] } // Blue primary
+                headStyles: { fillColor: [30, 64, 175] }
             });
 
             doc.save(`attendance_report_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -104,28 +116,44 @@ export default function AdminLayout() {
     };
 
     return (
-        <div className='admin-dashboard'>
-            <DashboardHeader
-                activeTab={activeTab}
-                // setActiveTab removed, navigation handles it
-                onFilter={() => setShowFilterModal(true)}
-                onExport={() => setShowExportModal(true)}
-            />
+        <div className='admin-layout-wrapper'>
+            <Sidebar />
 
-            <div className="attendance-form" style={{ marginTop: 8, background: activeTab === 'qrcode' ? 'transparent' : 'var(--card)' }}>
-                <Outlet context={{ items, eventFilter }} />
-            </div>
+            <main className="admin-main-content">
+                <TopNavbar onSearch={setSearchQuery} />
+
+                <div className="admin-content-scroll">
+                    <DashboardHeader
+                        onFilter={() => setShowFilterModal(true)}
+                        onExport={() => setShowExportModal(true)}
+                    />
+
+                    <div className="content-area">
+                        <Outlet context={{ items: filteredItems, eventFilter }} />
+                    </div>
+                </div>
+            </main>
 
             {showExportModal && (
                 <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h3>Export Data</h3>
-                        <div className="modal-actions">
-                            <button className="modal-btn primary" onClick={() => { downloadCsv(items); setShowExportModal(false); }}>Download CSV</button>
-                            <button className="modal-btn" onClick={() => { downloadExcel(items); setShowExportModal(false); }}>Download Excel</button>
-                            <button className="modal-btn" onClick={() => { downloadPdf(items); setShowExportModal(false); }}>Download PDF</button>
+                        <div style={{ textAlign: 'center' }}>
+                            <div className="modal-icon-wrapper" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </div>
+                            <h3>Export Data</h3>
+                            <p className="helper">Choose a format to download the attendance data.</p>
+                            <div className="modal-actions">
+                                <button className="modal-btn primary" onClick={() => { downloadCsv(filteredItems); setShowExportModal(false); }}>Download CSV</button>
+                                <button className="modal-btn" onClick={() => { downloadExcel(filteredItems); setShowExportModal(false); }}>Download Excel</button>
+                                <button className="modal-btn" onClick={() => { downloadPdf(filteredItems); setShowExportModal(false); }}>Download PDF</button>
+                            </div>
+                            <button className="modal-close" onClick={() => setShowExportModal(false)}>Cancel</button>
                         </div>
-                        <button className="modal-close" onClick={() => setShowExportModal(false)}>Cancel</button>
                     </div>
                 </div>
             )}
@@ -133,15 +161,25 @@ export default function AdminLayout() {
             {showFilterModal && (
                 <div className="modal-overlay" onClick={() => setShowFilterModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <h3>Filter Data</h3>
-                        <div style={{ marginTop: 16 }}>
-                            <label>Event ID</label>
-                            <input className="input" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} />
+                        <div style={{ textAlign: 'center' }}>
+                            <div className="modal-icon-wrapper" style={{ backgroundColor: '#f1f5f9', color: '#475569' }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                                </svg>
+                            </div>
+                            <h3>Filter Data</h3>
+                            <p className="helper">Load historical data for a specific event.</p>
+                            <div style={{ marginTop: 16 }}>
+                                <label className="small" style={{ display: 'block', marginBottom: 6 }}>Event ID</label>
+                                <input className="input" placeholder="e.g. 2026-03-11" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} />
+                            </div>
+                            <div className="modal-actions">
+                                <button disabled={loadingHistory} className="modal-btn primary" onClick={handleFilterLoad}>
+                                    {loadingHistory ? 'Loading...' : 'Load Data'}
+                                </button>
+                            </div>
+                            <button className="modal-close" onClick={() => setShowFilterModal(false)}>Close</button>
                         </div>
-                        <div className="modal-actions">
-                            <button className="modal-btn primary" onClick={handleFilterLoad}>{loadingHistory ? 'Loading...' : 'Load'}</button>
-                        </div>
-                        <button className="modal-close" onClick={() => setShowFilterModal(false)}>Close</button>
                     </div>
                 </div>
             )}

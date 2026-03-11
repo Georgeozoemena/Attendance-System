@@ -99,11 +99,48 @@ const AttendanceCategoryView = ({ data }) => {
         return count;
     };
 
-    const handleSendMessage = (messageData) => {
-        console.log('Sending message:', messageData);
-        alert(`Message ${messageData.scheduledTime ? 'scheduled' : 'sent'} to ${getSelectedCount()} recipients!`);
+    const getSelectedRecipients = () => {
+        const recipients = [];
+        Object.keys(selectedGroups).forEach(key => {
+            if (selectedGroups[key] && groupedData[key]) {
+                recipients.push(...groupedData[key]);
+            }
+        });
+        return recipients;
+    };
+
+    const handleSendMessage = async (messageData) => {
+        try {
+            const endpoint = messageData.scheduledTime ? '/api/messages/schedule' : '/api/messages/send';
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-key': localStorage.getItem('adminKey') || ''
+                },
+                body: JSON.stringify(messageData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                if (messageData.scheduledTime) {
+                    alert('Message scheduled for ' + new Date(messageData.scheduledTime).toLocaleString());
+                } else {
+                    alert('Sent: ' + result.sent + ', Failed: ' + result.failed);
+                }
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to send message');
+        }
         setSelectedGroups({});
     };
+
+    const selectedRecipients = getSelectedRecipients();
 
     const groupKeys = Object.keys(groupedData);
 
@@ -203,7 +240,7 @@ const AttendanceCategoryView = ({ data }) => {
             <BulkMessageModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                recipientCount={getSelectedCount()}
+                recipients={selectedRecipients}
                 onSend={handleSendMessage}
             />
         </div>
