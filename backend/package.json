@@ -18,7 +18,8 @@
   "dependencies": {
     "nodemailer": "^6.10.0",
     "qrcode": "^1.5.4",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "@libsql/client": "^0.14.0"
   },
   "devDependencies": {
     "body-parser": "^2.2.2",
