@@ -138,3 +138,8 @@ import AbsenteesPage from './AbsenteesPage.jsx';
 export function AdminAbsentees() {
     return <AbsenteesPage />;
 }
+
+import SettingsPage from './SettingsPage.jsx';
+export function AdminSettings() {
+    return <SettingsPage />;
+}

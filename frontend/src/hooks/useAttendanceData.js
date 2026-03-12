@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { connectToSSE } from '../services/realtime.js';
+import { API_BASE } from '../services/api.js';
 
 export function useAttendanceData() {
     const [items, setItems] = useState([]);
@@ -8,7 +9,7 @@ export function useAttendanceData() {
 
     // SSE subscription for live updates
     useEffect(() => {
-        const es = connectToSSE('/api/admin/stream');
+        const es = connectToSSE(`${API_BASE}/api/admin/stream`);
         es.onmessage = (ev) => {
             try {
                 const data = JSON.parse(ev.data);
@@ -30,7 +31,7 @@ export function useAttendanceData() {
             setLoadingHistory(true);
             try {
                 const adminKey = localStorage.getItem('adminKey');
-                const resp = await fetch('/api/attendance', {
+                const resp = await fetch(`${API_BASE}/api/attendance`, {
                     headers: {
                         'x-admin-key': adminKey || ''
                     }
@@ -68,7 +69,7 @@ export function useAttendanceData() {
             const params = new URLSearchParams();
             params.set('eventId', eventId);
             const adminKey = localStorage.getItem('adminKey');
-            const resp = await fetch(`/api/attendance?${params.toString()}`, {
+            const resp = await fetch(`${API_BASE}/api/attendance?${params.toString()}`, {
                 headers: {
                     'x-admin-key': adminKey || ''
                 }

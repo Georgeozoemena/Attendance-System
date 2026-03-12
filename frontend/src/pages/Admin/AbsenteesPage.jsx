@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../../services/api';
 
 const AbsenteesPage = () => {
     const [absentees, setAbsentees] = useState([]);
@@ -11,7 +12,7 @@ const AbsenteesPage = () => {
     const fetchAbsentees = async () => {
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch('/api/absentees', {
+            const res = await fetch(`${API_BASE}/api/absentees`, {
                 headers: { 'Authorization': adminKey }
             });
             const data = await res.json();

@@ -3,122 +3,122 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 export default function QRPage() {
   const [searchParams] = useSearchParams();
-  // Preserve eventId and type from URL so they flow through to the form
   const eventId = searchParams.get('eventId') || 'default-event';
   const type = searchParams.get('type') || 'member';
 
   const attendUrl = `/attend?eventId=${eventId}&type=${type}`;
   const checkInUrl = `/check-in?eventId=${eventId}`;
 
-  const styles = {
-    container: {
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', padding: '24px', backgroundColor: '#f0f4ff'
-    },
-    card: {
-      background: 'white', width: '100%', maxWidth: '520px', padding: '48px 40px',
-      borderRadius: '20px',
-      boxShadow: '0 20px 60px rgba(30, 64, 175, 0.12), 0 4px 12px rgba(0,0,0,0.08)',
-      textAlign: 'center', border: '1px solid #dbeafe'
-    },
-    logo: {
-      width: '56px', height: '56px', borderRadius: '16px',
-      background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      margin: '0 auto 24px auto', color: 'white'
-    },
-    h1: {
-      fontSize: '1.75rem', fontWeight: '800', color: '#0f172a', marginBottom: '8px',
-      letterSpacing: '-0.025em'
-    },
-    p: {
-      fontSize: '0.95rem', color: '#64748b', marginBottom: '36px', lineHeight: '1.6'
-    },
-    buttonGrid: {
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px'
-    },
-    bigButton: (primary) => ({
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: '28px 20px', borderRadius: '16px', cursor: 'pointer',
-      transition: 'all 0.2s ease', textDecoration: 'none',
-      background: primary ? 'linear-gradient(135deg, #1e40af, #3b82f6)' : 'white',
-      color: primary ? 'white' : '#0f172a',
-      border: primary ? 'none' : '2px solid #e2e8f0',
-      boxShadow: primary ? '0 8px 24px rgba(30, 64, 175, 0.3)' : '0 2px 8px rgba(0,0,0,0.05)'
-    }),
-    btnIcon: (primary) => ({
-      marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      width: '44px', height: '44px', borderRadius: '12px',
-      backgroundColor: primary ? 'rgba(255,255,255,0.2)' : '#eff6ff',
-      color: primary ? 'white' : '#1e40af'
-    }),
-    btnLabel: { fontSize: '1rem', fontWeight: '700', marginBottom: '4px' },
-    btnSub: (primary) => ({
-      fontSize: '0.8rem', color: primary ? 'rgba(255,255,255,0.75)' : '#64748b', fontWeight: '400'
-    }),
-    typeBadge: {
-      display: 'inline-block', padding: '6px 16px', borderRadius: '100px',
-      background: type === 'worker' ? '#fef3c7' : '#eff6ff',
-      color: type === 'worker' ? '#92400e' : '#1e40af',
-      fontSize: '0.8rem', fontWeight: '700', marginBottom: '24px',
-      textTransform: 'uppercase', letterSpacing: '0.05em'
-    }
-  };
+  const isWorker = type === 'worker';
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        {/* Logo / Icon */}
-        <div style={styles.logo}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', padding: '24px', background: 'var(--bg, #0c0c0e)'
+    }}>
+      <div style={{
+        background: 'var(--surface, #18181b)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: '20px', padding: '44px 36px',
+        width: '100%', maxWidth: '480px', textAlign: 'center',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.6)'
+      }}>
+        {/* Brand icon */}
+        <div style={{
+          width: 52, height: 52, borderRadius: '14px',
+          background: '#f59e0b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px auto', color: '#000'
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
           </svg>
         </div>
 
-        <h1 style={styles.h1}>Welcome to Service</h1>
-        <p style={styles.p}>Select how you'd like to record your attendance today.</p>
+        {/* Station badge */}
+        <div style={{
+          display: 'inline-block', padding: '4px 14px', borderRadius: '100px',
+          background: isWorker ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)',
+          color: isWorker ? '#22c55e' : '#f59e0b',
+          border: `1px solid ${isWorker ? 'rgba(34,197,94,0.25)' : 'rgba(245,158,11,0.25)'}`,
+          fontSize: '11px', fontWeight: 700, marginBottom: '16px',
+          textTransform: 'uppercase', letterSpacing: '0.06em'
+        }}>
+          {isWorker ? '⚡ Worker' : '✦ Member'}
+        </div>
 
-        {/* Station type badge */}
-        {type && (
-          <div style={styles.typeBadge}>
-            {type === 'worker' ? '⚡ Worker Station' : '✦ Member Station'}
-          </div>
-        )}
+        <h1 style={{
+          fontSize: '22px', fontWeight: 800, color: '#fafafa',
+          marginBottom: '6px', letterSpacing: '-0.02em'
+        }}>
+          Welcome to Service
+        </h1>
+        <p style={{ fontSize: '13px', color: '#71717a', marginBottom: '32px', lineHeight: 1.6 }}>
+          Select how you'd like to record your attendance today.
+        </p>
 
-        <div style={styles.buttonGrid}>
-          {/* Quick Check-In */}
-          <Link to={checkInUrl} style={styles.bigButton(true)}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(30, 64, 175, 0.4)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(30, 64, 175, 0.3)'; }}
+        {/* Action cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+          {/* Quick Check-in */}
+          <Link
+            to={checkInUrl}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '24px 16px', borderRadius: '12px', textDecoration: 'none',
+              background: '#f59e0b', color: '#000',
+              border: '1px solid #f59e0b',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#d97706'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#f59e0b'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <div style={styles.btnIcon(true)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+            <div style={{
+              width: 40, height: 40, borderRadius: '10px',
+              background: 'rgba(0,0,0,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <span style={styles.btnLabel}>Quick Check-in</span>
-            <span style={styles.btnSub(true)}>I've been here before</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, marginBottom: '3px' }}>Quick Check-in</span>
+            <span style={{ fontSize: '11px', opacity: 0.7 }}>Been here before</span>
           </Link>
 
-          {/* Full Registration */}
-          <Link to={attendUrl} style={styles.bigButton(false)}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#1e40af'; e.currentTarget.style.background = '#f8faff'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          {/* Register */}
+          <Link
+            to={attendUrl}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '24px 16px', borderRadius: '12px', textDecoration: 'none',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#e4e4e7', border: '1px solid rgba(255,255,255,0.1)',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <div style={styles.btnIcon(false)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div style={{
+              width: 40, height: 40, borderRadius: '10px',
+              background: 'rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px', color: '#f59e0b'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="8.5" cy="7" r="4" />
                 <line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" />
               </svg>
             </div>
-            <span style={styles.btnLabel}>Register</span>
-            <span style={styles.btnSub(false)}>First time or new details</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, marginBottom: '3px' }}>Register</span>
+            <span style={{ fontSize: '11px', color: '#52525b' }}>First time or new info</span>
           </Link>
         </div>
 
-        <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-          Dominion City, Olive Parish • Attendance System
+        <p style={{ fontSize: '12px', color: '#3f3f46' }}>
+          Dominion City, Olive Parish · Attendance System
         </p>
       </div>
     </div>

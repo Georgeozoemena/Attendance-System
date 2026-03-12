@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { API_BASE } from '../../services/api';
 
 export default function AdminQRGenerator({ eventId, initialCategory = 'member' }) {
     const qrRef = useRef();
@@ -22,7 +23,7 @@ export default function AdminQRGenerator({ eventId, initialCategory = 'member' }
     const fetchEvents = async () => {
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch('/api/events', {
+            const res = await fetch(`${API_BASE}/api/events`, {
                 headers: { 'Authorization': adminKey }
             });
             if (res.status === 401) {
@@ -140,13 +141,13 @@ export default function AdminQRGenerator({ eventId, initialCategory = 'member' }
                                     className={`toggle-btn ${category === 'member' ? 'active' : ''}`}
                                     onClick={() => setCategory('member')}
                                 >
-                                    Member Station
+                                    Member
                                 </button>
                                 <button
                                     className={`toggle-btn ${category === 'worker' ? 'active' : ''}`}
                                     onClick={() => setCategory('worker')}
                                 >
-                                    Worker Station
+                                    Worker
                                 </button>
                             </div>
                         </div>

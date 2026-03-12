@@ -6,15 +6,22 @@ import Toast from '../UI/Toast.jsx';
 
 const REQUIRED_FIELDS = ['name', 'email', 'phone', 'address', 'occupation', 'gender', 'nationality'];
 
-function validate(form) {
+function validate(form, type) {
   const errs = {};
   if (!form.name || form.name.trim().length < 2) errs.name = 'Name must be at least 2 characters';
   if (!/\S+@\S+\.\S/.test(form.email)) errs.email = 'Please enter a valid email address';
   if (!form.phone || String(form.phone).length < 7) errs.phone = 'Please enter a valid phone number';
-  if (!form.address || form.address.trim().length < 3) errs.address = 'Please enter your address';
-  if (!form.occupation || form.occupation.trim().length < 2) errs.occupation = 'Please enter your occupation';
-  if (!form.gender) errs.gender = 'Please select your gender';
-  if (!form.nationality || form.nationality.trim().length < 2) errs.nationality = 'Please enter your nationality';
+
+  // Fields required for Members only
+  if (type === 'member') {
+    if (!form.address || form.address.trim().length < 3) errs.address = 'Please enter your address';
+    if (!form.occupation || form.occupation.trim().length < 2) errs.occupation = 'Please enter your occupation';
+    if (!form.gender) errs.gender = 'Please select your gender';
+    if (!form.nationality || form.nationality.trim().length < 2) errs.nationality = 'Please enter your nationality';
+  } else if (type === 'worker') {
+    // Worker required fields
+    if (!form.department || form.department.trim().length < 2) errs.department = 'Please enter your department/unit';
+  }
   return errs;
 }
 
@@ -55,10 +62,10 @@ export default function AttendanceForm({ eventId, type }) {
     setForm(f => ({ ...f, [name]: value }));
     // Only clear errors inline (don't add new ones) until user has tried to submit
     if (submitted && errors[name]) {
-      const e = validate({ ...form, [name]: value });
+      const e = validate({ ...form, [name]: value }, type);
       setErrors(prev => ({ ...prev, [name]: e[name] || '' }));
     }
-  }, [form, errors, submitted]);
+  }, [form, errors, submitted, type]);
 
   // --- Prefill on phone blur ---
   async function handlePhoneBlur() {
@@ -132,7 +139,7 @@ export default function AttendanceForm({ eventId, type }) {
     e.preventDefault();
     setSubmitted(true);
 
-    const errs = validate(form);
+    const errs = validate(form, type);
     setErrors(errs);
     if (Object.keys(errs).length > 0 || loading) return;
 
@@ -157,7 +164,12 @@ export default function AttendanceForm({ eventId, type }) {
       navigate('/thank-you', {
         state: { name: form.name, uniqueCode: lastResult?.appended?.uniqueCode }
       });
-    } catch {
+    } catch (err) {
+      if (err.status === 409) {
+        setToast({ message: 'You have already marked attendance for this event today!', type: 'info' });
+        setLoading(false);
+        return;
+      }
       navigate('/thank-you', { state: { name: form.name } });
     } finally {
       setLoading(false);
@@ -260,58 +272,63 @@ export default function AttendanceForm({ eventId, type }) {
             {errors.phone && <p className="field-error">{errors.phone}</p>}
           </div>
 
-          {/* Address */}
-          <div className="form-field">
-            <label>Home Address <span className="req">*</span></label>
-            <input
-              className={`form-input ${errors.address ? 'error' : ''}`}
-              placeholder="e.g. 13 Awka Road, Onitsha"
-              value={form.address}
-              autoComplete="street-address"
-              onChange={e => field('address', e.target.value)}
-            />
-            {errors.address && <p className="field-error">{errors.address}</p>}
-          </div>
+          {/* Member-specific fields: Address & Occupation */}
+          {type === 'member' && (
+            <>
+              <div className="form-field">
+                <label>Home Address <span className="req">*</span></label>
+                <input
+                  className={`form-input ${errors.address ? 'error' : ''}`}
+                  placeholder="e.g. 13 Awka Road, Onitsha"
+                  value={form.address}
+                  autoComplete="street-address"
+                  onChange={e => field('address', e.target.value)}
+                />
+                {errors.address && <p className="field-error">{errors.address}</p>}
+              </div>
 
-          {/* Occupation */}
-          <div className="form-field">
-            <label>Occupation <span className="req">*</span></label>
-            <input
-              className={`form-input ${errors.occupation ? 'error' : ''}`}
-              placeholder="e.g. Student, Engineer, Nurse"
-              value={form.occupation}
-              onChange={e => field('occupation', e.target.value)}
-            />
-            {errors.occupation && <p className="field-error">{errors.occupation}</p>}
-          </div>
+              <div className="form-field">
+                <label>Occupation <span className="req">*</span></label>
+                <input
+                  className={`form-input ${errors.occupation ? 'error' : ''}`}
+                  placeholder="e.g. Student, Engineer, Nurse"
+                  value={form.occupation}
+                  onChange={e => field('occupation', e.target.value)}
+                />
+                {errors.occupation && <p className="field-error">{errors.occupation}</p>}
+              </div>
+            </>
+          )}
 
-          {/* Two-column row: Gender + Nationality */}
-          <div className="form-row">
-            <div className="form-field">
-              <label>Gender <span className="req">*</span></label>
-              <select
-                className={`form-input select ${errors.gender ? 'error' : ''}`}
-                value={form.gender}
-                onChange={e => field('gender', e.target.value)}
-              >
-                <option value="">Select...</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-              {errors.gender && <p className="field-error">{errors.gender}</p>}
+          {/* Member-specific fields: Gender & Nationality */}
+          {type === 'member' && (
+            <div className="form-row">
+              <div className="form-field">
+                <label>Gender <span className="req">*</span></label>
+                <select
+                  className={`form-input select ${errors.gender ? 'error' : ''}`}
+                  value={form.gender}
+                  onChange={e => field('gender', e.target.value)}
+                >
+                  <option value="">Select...</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                {errors.gender && <p className="field-error">{errors.gender}</p>}
+              </div>
+
+              <div className="form-field">
+                <label>Nationality <span className="req">*</span></label>
+                <input
+                  className={`form-input ${errors.nationality ? 'error' : ''}`}
+                  placeholder="e.g. Nigerian"
+                  value={form.nationality}
+                  onChange={e => field('nationality', e.target.value)}
+                />
+                {errors.nationality && <p className="field-error">{errors.nationality}</p>}
+              </div>
             </div>
-
-            <div className="form-field">
-              <label>Nationality <span className="req">*</span></label>
-              <input
-                className={`form-input ${errors.nationality ? 'error' : ''}`}
-                placeholder="e.g. Nigerian"
-                value={form.nationality}
-                onChange={e => field('nationality', e.target.value)}
-              />
-              {errors.nationality && <p className="field-error">{errors.nationality}</p>}
-            </div>
-          </div>
+          )}
 
           {/* First Timer — only shown for Member station */}
           {isFirstTimerType && (
@@ -336,18 +353,21 @@ export default function AttendanceForm({ eventId, type }) {
             </div>
           )}
 
-          {/* Department (optional) */}
-          <div className="form-field">
-            <label>
-              Department / Unit <span className="optional">(optional)</span>
-            </label>
-            <input
-              className="form-input"
-              placeholder="e.g. Media, Choir, Ushering"
-              value={form.department}
-              onChange={e => field('department', e.target.value)}
-            />
-          </div>
+          {/* Department — only shown for Worker entries */}
+          {type === 'worker' && (
+            <div className="form-field">
+              <label>
+                Department / Unit <span className="req">*</span>
+              </label>
+              <input
+                className={`form-input ${errors.department ? 'error' : ''}`}
+                placeholder="e.g. Media, Choir, Ushering"
+                value={form.department}
+                onChange={e => field('department', e.target.value)}
+              />
+              {errors.department && <p className="field-error">{errors.department}</p>}
+            </div>
+          )}
 
           {/* Submit */}
           <button

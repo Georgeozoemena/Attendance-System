@@ -1,3 +1,5 @@
+import { API_BASE } from './api';
+
 export function connectToSSE(url) {
   const adminKey = localStorage.getItem('adminKey');
   const separator = url.includes('?') ? '&' : '?';

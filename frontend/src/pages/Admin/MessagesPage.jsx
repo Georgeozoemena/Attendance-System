@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import BulkMessageModal from '../../components/Admin/BulkMessageModal.jsx';
+import { API_BASE } from '../../services/api';
 
 export default function MessagesPage() {
     const { items } = useOutletContext();
@@ -17,8 +18,8 @@ export default function MessagesPage() {
     const fetchMessageData = async () => {
         try {
             const [historyRes, scheduledRes] = await Promise.all([
-                fetch('/api/messages/history'),
-                fetch('/api/messages/scheduled')
+                fetch(`${API_BASE}/api/messages/history`),
+                fetch(`${API_BASE}/api/messages/scheduled`)
             ]);
 
             if (historyRes.ok) setHistory(await historyRes.json());
@@ -32,7 +33,7 @@ export default function MessagesPage() {
 
     const handleSendBulkMessage = async (payload) => {
         try {
-            const endpoint = payload.scheduledTime ? '/api/messages/schedule' : '/api/messages/send';
+            const endpoint = payload.scheduledTime ? `${API_BASE}/api/messages/schedule` : `${API_BASE}/api/messages/send`;
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

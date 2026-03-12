@@ -129,7 +129,13 @@ export default function AdminLayout() {
                     />
 
                     <div className="content-area">
-                        <Outlet context={{ items: filteredItems, eventFilter }} />
+                        <Outlet context={{
+                            items: filteredItems,
+                            eventFilter,
+                            setEventFilter,
+                            fetchByEvent,
+                            loadingHistory
+                        }} />
                     </div>
                 </div>
             </main>

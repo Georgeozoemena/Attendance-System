@@ -1,75 +1,119 @@
 /* backend/sheetsClient.js
  *
- * Forwards requests to an Apps Script Web App.
- * Requires environment variables:
- *   APPS_SCRIPT_WEBHOOK - the Apps Script URL (e.g. https://script.google.com/macros/s/XXX/exec)
- *   APPS_SCRIPT_KEY     - (optional) API key to include in requests
- *
- * Notes:
- * - Node 18+ is recommended (global fetch). engines in package.json specify node>=18.
+ * Local SQLite attendance storage.
+ * All attendance records are stored in the local SQLite database.
+ * If APPS_SCRIPT_WEBHOOK is set, data is ALSO forwarded to Google Sheets (optional sync).
  */
 
+const { db, dbAll, dbRun, dbGet } = require('./database');
+
+// Ensure the attendance table exists
+db.serialize(() => {
+  db.run(`
+        CREATE TABLE IF NOT EXISTS attendance (
+            id TEXT PRIMARY KEY,
+            createdAt TEXT,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            occupation TEXT,
+            firstTimer INTEGER DEFAULT 0,
+            gender TEXT,
+            nationality TEXT,
+            department TEXT,
+            type TEXT DEFAULT 'member',
+            eventId TEXT,
+            uniqueCode TEXT
+        )
+    `, (err) => {
+    if (err) console.error('Failed to create attendance table:', err);
+    else console.log('Attendance table ready.');
+  });
+});
+
+// Optional: forward to Google Sheets if webhook is configured
 const APPS_SCRIPT_WEBHOOK = process.env.APPS_SCRIPT_WEBHOOK;
 const APPS_SCRIPT_KEY = process.env.APPS_SCRIPT_KEY;
 
-if (!APPS_SCRIPT_WEBHOOK) {
-  console.warn('APPS_SCRIPT_WEBHOOK not set — Sheets client will not work until configured.');
-}
-
-function buildUrlWithKey(baseUrl) {
-  if (!APPS_SCRIPT_KEY) return baseUrl;
+async function forwardToSheets(payload) {
+  if (!APPS_SCRIPT_WEBHOOK) return;
   try {
-    const url = new URL(baseUrl);
-    url.searchParams.set('key', APPS_SCRIPT_KEY);
-    return url.toString();
+    const url = new URL(APPS_SCRIPT_WEBHOOK);
+    if (APPS_SCRIPT_KEY) url.searchParams.set('key', APPS_SCRIPT_KEY);
+    const body = { ...payload };
+    if (APPS_SCRIPT_KEY) body.key = APPS_SCRIPT_KEY;
+    await fetch(url.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
   } catch (err) {
-    return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}key=${encodeURIComponent(APPS_SCRIPT_KEY)}`;
+    console.warn('Sheets sync failed (non-fatal):', err.message);
   }
 }
 
 async function appendRow(payload) {
-  if (!APPS_SCRIPT_WEBHOOK) throw new Error('APPS_SCRIPT_WEBHOOK not configured');
-  const url = buildUrlWithKey(APPS_SCRIPT_WEBHOOK);
+  const {
+    id, createdAt, name, email, phone,
+    address, occupation, firstTimer, gender,
+    nationality, department, type, eventId, uniqueCode
+  } = payload;
 
-  const body = { ...payload };
-  if (APPS_SCRIPT_KEY) body.key = APPS_SCRIPT_KEY;
+  // Duplicate check: Same person, same event, same day
+  const todayStart = new Date().toISOString().split('T')[0];
+  const existing = await dbGet(`
+    SELECT id FROM attendance 
+    WHERE (phone = ? OR uniqueCode = ?) 
+      AND eventId = ? 
+      AND createdAt LIKE ? 
+    LIMIT 1
+  `, [phone, uniqueCode, eventId, `${todayStart}%`]);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`Apps Script appendRow failed: ${res.status} ${res.statusText} ${txt}`);
+  if (existing) {
+    const err = new Error('Duplicate attendance');
+    err.code = 'DUPLICATE_ATTENDANCE';
+    throw err;
   }
 
-  const json = await res.json().catch(() => null);
-  return json;
+  await dbRun(`
+        INSERT OR REPLACE INTO attendance
+        (id, createdAt, name, email, phone, address, occupation, firstTimer, gender, nationality, department, type, eventId, uniqueCode)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+    id, createdAt, name, email, phone,
+    address, occupation,
+    firstTimer ? 1 : 0,
+    gender, nationality, department,
+    type || 'member',
+    eventId, uniqueCode
+  ]);
+
+  // Optionally also write to Google Sheets (fire-and-forget)
+  forwardToSheets(payload);
+
+  return payload;
 }
 
 async function lookup({ email, phone, eventId } = {}) {
-  if (!APPS_SCRIPT_WEBHOOK) throw new Error('APPS_SCRIPT_WEBHOOK not configured');
-  const base = buildUrlWithKey(APPS_SCRIPT_WEBHOOK);
-  const url = new URL(base);
-  url.searchParams.set('action', 'lookup');
-  if (email) url.searchParams.set('email', email);
-  if (phone) url.searchParams.set('phone', phone);
-  if (eventId) url.searchParams.set('eventId', eventId);
+  const conditions = [];
+  const params = [];
 
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: { Accept: 'application/json' }
-  });
+  if (email) { conditions.push('LOWER(email) = LOWER(?)'); params.push(email); }
+  if (phone) { conditions.push('phone = ?'); params.push(phone); }
+  if (eventId) { conditions.push('eventId = ?'); params.push(eventId); }
 
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`Apps Script lookup failed: ${res.status} ${res.statusText} ${txt}`);
-  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = await dbAll(
+    `SELECT *, (firstTimer = 1) as firstTimer FROM attendance ${where} ORDER BY createdAt DESC`,
+    params
+  );
 
-  const json = await res.json().catch(() => null);
-  return json || [];
+  // Normalize: convert firstTimer from integer back to boolean
+  return rows.map(r => ({
+    ...r,
+    firstTimer: r.firstTimer === 1 || r.firstTimer === true
+  }));
 }
 
 module.exports = { appendRow, lookup };

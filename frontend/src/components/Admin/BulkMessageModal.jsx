@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { EVENT_CONFIGS } from '../../utils/events';
+import { API_BASE } from '../../services/api';
 
 const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
     const [message, setMessage] = useState('');
@@ -25,7 +26,7 @@ const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
 
     const fetchTemplates = async () => {
         try {
-            const response = await fetch('/api/messages/templates');
+            const response = await fetch(`${API_BASE}/api/messages/templates`);
             if (response.ok) {
                 const data = await response.json();
                 setTemplates(data || []);
@@ -40,7 +41,7 @@ const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
 
         setIsSavingTemplate(true);
         try {
-            const response = await fetch('/api/messages/templates', {
+            const response = await fetch(`${API_BASE}/api/messages/templates`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -70,7 +71,7 @@ const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
 
     const deleteTemplate = async (id) => {
         try {
-            await fetch(`/api/messages/templates/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/api/messages/templates/${id}`, { method: 'DELETE' });
             setTemplates(templates.filter(t => t.id !== id));
         } catch (error) {
             console.error('Error deleting template:', error);

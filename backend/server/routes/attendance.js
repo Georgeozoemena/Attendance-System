@@ -116,6 +116,33 @@ router.get('/absentees', auth, async (req, res) => {
   }
 });
 
+// GET /api/members/:code (Member profile with history)
+router.get('/members/:code', auth, async (req, res) => {
+  try {
+    const allRecords = await SheetsClient.lookup();
+    const history = allRecords.filter(r => r.uniqueCode === req.params.code)
+      .sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+
+    if (history.length === 0) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    const member = {
+      ...history[0],
+      history: history.map(h => ({
+        eventId: h.eventId,
+        createdAt: h.createdAt || h.timestamp,
+        type: h.type
+      }))
+    };
+
+    res.json(member);
+  } catch (err) {
+    console.error('Member details fetch failed', err);
+    res.status(500).json({ error: 'Failed to fetch member details' });
+  }
+});
+
 // GET /api/lookup (Public Lookup - e.g. for prefill)
 router.get('/lookup', async (req, res) => {
   const { email, phone, eventId } = req.query;
@@ -190,6 +217,9 @@ router.post('/attendance', async (req, res) => {
     });
     res.status(201).json(result || sanitizedPayload);
   } catch (err) {
+    if (err.code === 'DUPLICATE_ATTENDANCE') {
+      return res.status(409).json({ error: 'You have already marked attendance for this event today!' });
+    }
     console.error('Failed to append', err);
     res.status(500).json({ error: 'persist failed' });
   }

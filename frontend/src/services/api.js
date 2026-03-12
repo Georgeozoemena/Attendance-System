@@ -1,5 +1,7 @@
+export const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export async function postAttendance(payload) {
-  const res = await fetch('/api/attendance', {
+  const res = await fetch(`${API_BASE}/api/attendance`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -16,7 +18,7 @@ export async function lookupAttendance({ email, phone, eventId }) {
   if (email) params.set('email', email);
   if (phone) params.set('phone', phone);
   if (eventId) params.set('eventId', eventId);
-  const res = await fetch(`/api/lookup?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/api/lookup?${params.toString()}`);
   if (!res.ok) return null;
   const data = await res.json();
   return Array.isArray(data) ? data : [];

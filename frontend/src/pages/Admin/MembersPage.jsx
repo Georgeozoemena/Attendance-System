@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import MemberDetailsModal from '../../components/Admin/MemberDetailsModal.jsx';
+import { API_BASE } from '../../services/api';
 
 const MembersPage = () => {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('all');
+    const [selectedMemberCode, setSelectedMemberCode] = useState(null);
 
     useEffect(() => {
         fetchMembers();
@@ -13,7 +16,7 @@ const MembersPage = () => {
     const fetchMembers = async () => {
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch('/api/members', {
+            const res = await fetch(`${API_BASE}/api/members`, {
                 headers: { 'Authorization': adminKey }
             });
             const data = await res.json();
@@ -77,6 +80,7 @@ const MembersPage = () => {
                             <th>Category</th>
                             <th>Phone</th>
                             <th>Last Seen</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -92,16 +96,32 @@ const MembersPage = () => {
                                     </td>
                                     <td>{member.phone || '-'}</td>
                                     <td>{new Date(member.lastSeen).toLocaleDateString()}</td>
+                                    <td>
+                                        <button
+                                            className="small-btn text"
+                                            onClick={() => setSelectedMemberCode(member.uniqueCode)}
+                                            style={{ color: 'var(--primary)', fontWeight: '600' }}
+                                        >
+                                            View profile
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="5" className="empty-state">No members found matching your search.</td>
+                                <td colSpan="6" className="empty-state">No members found matching your search.</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {selectedMemberCode && (
+                <MemberDetailsModal
+                    memberCode={selectedMemberCode}
+                    onClose={() => setSelectedMemberCode(null)}
+                />
+            )}
         </div>
     );
 };

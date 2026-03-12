@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { API_BASE } from '../../services/api';
 
 const EventsPage = () => {
+    const { fetchByEvent, setEventFilter } = useOutletContext();
+    const navigate = useNavigate();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -60,7 +64,7 @@ const EventsPage = () => {
         if (!window.confirm('Are you sure you want to delete this event?')) return;
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch(`/api/events/${id}`, {
+            const res = await fetch(`${API_BASE}/api/events/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': adminKey }
             });
@@ -68,6 +72,18 @@ const EventsPage = () => {
         } catch (err) {
             console.error('Failed to delete event', err);
         }
+    };
+
+    const handleViewAttendance = (eventId) => {
+        setEventFilter(eventId);
+        fetchByEvent(eventId);
+        navigate('/admin/live');
+    };
+
+    const copyEventLink = (id) => {
+        const link = `${window.location.origin}/attend?eventId=${id}`;
+        navigator.clipboard.writeText(link);
+        alert('Event link copied to clipboard!');
     };
 
     if (loading) {
@@ -117,7 +133,9 @@ const EventsPage = () => {
                                             {event.status}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td style={{ display: 'flex', gap: '8px' }}>
+                                        <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
+                                        <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
                                         <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
                                     </td>
                                 </tr>
