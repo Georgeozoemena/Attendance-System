@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: attendance-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: APPS_SCRIPT_WEBHOOK
+        sync: false
+      - key: LIBSQL_URL
+        sync: false
+      - key: LIBSQL_AUTH_TOKEN
+        sync: false
