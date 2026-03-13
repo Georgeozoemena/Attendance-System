@@ -1,6 +1,5 @@
 {
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
+  "buildCommand": "cd frontend && npm install && npm run build && rm -rf ../public && mv dist ../public",
+  "outputDirectory": "public",
   "installCommand": "npm install"
 }
