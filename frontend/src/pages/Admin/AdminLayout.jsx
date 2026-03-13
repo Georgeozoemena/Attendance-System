@@ -11,6 +11,29 @@ export default function AdminLayout() {
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [eventFilter, setEventFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [events, setEvents] = useState([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+
+    React.useEffect(() => {
+        const fetchEventsList = async () => {
+            setLoadingEvents(true);
+            try {
+                const adminKey = localStorage.getItem('adminKey');
+                const res = await fetch('/api/events', {
+                    headers: { 'Authorization': adminKey }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setEvents(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch events list', err);
+            } finally {
+                setLoadingEvents(false);
+            }
+        };
+        fetchEventsList();
+    }, []);
 
     // Global search logic
     const filteredItems = useMemo(() => {
@@ -174,15 +197,41 @@ export default function AdminLayout() {
                                 </svg>
                             </div>
                             <h3>Filter Data</h3>
-                            <p className="helper">Load historical data for a specific event.</p>
-                            <div style={{ marginTop: 16 }}>
-                                <label className="small" style={{ display: 'block', marginBottom: 6 }}>Event ID</label>
-                                <input className="input" placeholder="e.g. 2026-03-11" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} />
+                            <p className="helper">Select an event to load historical attendance records.</p>
+                            <div style={{ marginTop: 16, textAlign: 'left' }}>
+                                <label className="small" style={{ display: 'block', marginBottom: 6 }}>Select Event</label>
+                                <select 
+                                    className="input" 
+                                    value={eventFilter} 
+                                    onChange={(e) => setEventFilter(e.target.value)}
+                                    style={{ width: '100%', height: '42px' }}
+                                >
+                                    <option value="">All Events (Live Feed)</option>
+                                    {events.map(e => (
+                                        <option key={e.id} value={e.id}>
+                                            {new Date(e.date).toLocaleDateString()} - {e.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="modal-actions">
-                                <button disabled={loadingHistory} className="modal-btn primary" onClick={handleFilterLoad}>
-                                    {loadingHistory ? 'Loading...' : 'Load Data'}
+                                <button 
+                                    disabled={loadingHistory} 
+                                    className="modal-btn primary" 
+                                    onClick={handleFilterLoad}
+                                    style={{ flex: 1 }}
+                                >
+                                    {loadingHistory ? 'Loading...' : 'Apply Filter'}
                                 </button>
+                                {eventFilter && (
+                                    <button 
+                                        className="modal-btn" 
+                                        onClick={() => { setEventFilter(''); fetchByEvent(''); setShowFilterModal(false); }}
+                                        style={{ flex: 1 }}
+                                    >
+                                        Clear Filter
+                                    </button>
+                                )}
                             </div>
                             <button className="modal-close" onClick={() => setShowFilterModal(false)}>Close</button>
                         </div>

@@ -26,7 +26,7 @@ function isValidEventId(eventId) {
 
 // GET /api/attendance (Admin History)
 router.get('/attendance', auth, async (req, res) => {
-  const { eventId } = req.query;
+  const { eventId, date } = req.query;
 
   // Validate eventId if provided
   if (eventId && !isValidEventId(eventId)) {
@@ -34,9 +34,19 @@ router.get('/attendance', auth, async (req, res) => {
   }
 
   try {
-    // If we want ALL records when no eventId, GAS doGet needs update, 
-    // but for now we follow the existing pattern.
-    const rows = await SheetsClient.lookup({ eventId });
+    let rows;
+    if (eventId) {
+      // Fetch from local SQLite for speed and reliability
+      const { dbAll } = require('../database');
+      rows = await dbAll('SELECT * FROM attendance_local WHERE eventId = ? ORDER BY createdAt DESC', [eventId]);
+      
+      // If local is empty, fallback to Sheets (for backward compatibility)
+      if (rows.length === 0) {
+        rows = await SheetsClient.lookup({ eventId });
+      }
+    } else {
+      rows = await SheetsClient.lookup();
+    }
     res.json(rows);
   } catch (err) {
     console.error('History fetch failed', err);
@@ -205,9 +215,27 @@ router.post('/attendance', async (req, res) => {
   }
 
   try {
+    // 1. Persist to SQLite FIRST (Local source of truth)
+    const { dbRun } = require('../database');
+    await dbRun(
+      `INSERT INTO attendance_local (
+        id, eventId, name, email, phone, address, occupation, 
+        firstTimer, gender, nationality, department, type, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        sanitizedPayload.id, sanitizedPayload.eventId, sanitizedPayload.name,
+        sanitizedPayload.email, sanitizedPayload.phone, sanitizedPayload.address,
+        sanitizedPayload.occupation, sanitizedPayload.firstTimer ? 1 : 0,
+        sanitizedPayload.gender, sanitizedPayload.nationality,
+        sanitizedPayload.department, sanitizedPayload.type, sanitizedPayload.createdAt
+      ]
+    );
+
+    // 2. Sync to Google Sheets
     const result = await SheetsClient.appendRow(sanitizedPayload);
+    
     // broadcast to SSE admin clients
-    const message = JSON.stringify(sanitizedPayload);
+    const message = JSON.stringify({ ...sanitizedPayload, uniqueCode: result?.uniqueCode });
     sseClients.forEach((c) => {
       try {
         c.res.write(`data: ${message}\n\n`);

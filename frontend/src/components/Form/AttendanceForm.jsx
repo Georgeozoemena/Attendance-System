@@ -52,11 +52,81 @@ export default function AttendanceForm({ eventId, type }) {
   }, [eventId]);
 
   const [loading, setLoading] = useState(false);
-  const [lookingUp, setLookingUp] = useState(false); // separate state for prefill spinner
+  const [lookingUp, setLookingUp] = useState(false);
   const [prefilledFrom, setPrefilledFrom] = useState(null);
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false); // only show errors after first submit attempt
+  const [submitted, setSubmitted] = useState(false);
+  const [eventData, setEventData] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [isHardExpired, setIsHardExpired] = useState(false);
+
+  const fetchEventDetails = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/events/current`);
+      if (res.ok) {
+        const event = await res.json();
+        setEventData(event);
+      }
+    } catch (err) {
+      console.error('Failed to fetch event details', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEventDetails();
+    // Poll for status changes (freeze/unfreeze)
+    const pollInterval = setInterval(fetchEventDetails, 10000);
+    return () => clearInterval(pollInterval);
+  }, [fetchEventDetails]);
+
+  useEffect(() => {
+    if (!eventData || eventData.is_frozen) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const start = new Date(eventData.created_at).getTime();
+      const now = Date.now();
+      const totalDuration = (eventData.expiry_duration || 0) * 60 * 1000;
+      
+      // Hard 24h limit
+      if (now - start > 24 * 60 * 60 * 1000) {
+        setIsHardExpired(true);
+        clearInterval(timer);
+        return;
+      }
+
+      if (totalDuration === 0) {
+        setTimeLeft(null);
+        return;
+      }
+
+      const timeElapsed = now - start;
+      const frozenOffset = (eventData.total_frozen_ms || 0);
+      const activeElapsed = timeElapsed - frozenOffset;
+      const remaining = totalDuration - activeElapsed;
+
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        clearInterval(timer);
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [eventData]);
+
+  const formatTime = (ms) => {
+    if (ms === null || ms < 0) return '';
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const field = useCallback((name, value) => {
     setForm(f => ({ ...f, [name]: value }));
@@ -89,21 +159,29 @@ export default function AttendanceForm({ eventId, type }) {
         const user = global[0];
         setToast({
           message: (
-            <span>
-              Number registered to <strong>{user.name}</strong>.{' '}
+            <div className="one-tap-checkin">
+              <span style={{ display: 'block', marginBottom: '8px' }}>
+                Welcome back, <strong>{user.name}</strong>!
+              </span>
+              <button
+                onClick={() => handleOneTapSubmit(user)}
+                className="btn-station primary"
+                style={{ width: '100%', padding: '10px', fontSize: '14px' }}
+                disabled={loading}
+              >
+                {loading ? 'Checking in...' : 'One-Tap Check-In'}
+              </button>
               <button
                 onClick={() => {
-                  setForm(s => ({ ...s, ...user, type: s.type, firstTimer: !!user.firstTimer }));
-                  saveUser(user.phone, user);
-                  setPrefilledFrom('previous record');
-                  setToast(null);
-                  setErrors({});
+                   setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
+                   setPrefilledFrom('manual');
+                   setToast(null);
                 }}
-                style={{ background: 'none', border: 'none', color: '#fff', textDecoration: 'underline', padding: '0 4px', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#fff', textDecoration: 'underline', fontSize: '12px', marginTop: '8px', cursor: 'pointer', width: '100%' }}
               >
-                Tap to auto-fill
+                Not you? or edit details
               </button>
-            </span>
+            </div>
           ),
           type: 'info'
         });
@@ -112,6 +190,33 @@ export default function AttendanceForm({ eventId, type }) {
       // silent fail
     } finally {
       setLookingUp(false);
+    }
+  }
+
+  async function handleOneTapSubmit(userData) {
+    setLoading(true);
+    try {
+      const payload = { 
+        ...userData, 
+        eventId, 
+        createdAt: new Date().toISOString(),
+        firstTimer: false // Definitely not a first timer if we found them
+      };
+      
+      // Save locally and queue
+      saveUser(userData.phone, payload);
+      queueAdd(eventId, payload);
+      
+      await tryFlushQueue();
+      
+      navigate('/thank-you', {
+        state: { name: userData.name }
+      });
+    } catch (err) {
+      console.error('One-tap failed', err);
+      setToast({ message: 'Quick check-in failed. Please use the form.', type: 'error' });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -178,9 +283,36 @@ export default function AttendanceForm({ eventId, type }) {
 
   const isFirstTimerType = type === 'member'; // Members could be first-timers; workers usually not
 
+  const showMaintenance = eventData?.is_frozen === 1;
+  const showExpired = (timeLeft !== null && timeLeft <= 0) || isHardExpired;
+
   return (
     <div className="attendance-form-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {showMaintenance && (
+        <div className="maintenance-overlay">
+          <div className="overlay-content">
+            <div className="overlay-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <h2>Currently experiencing maintenance</h2>
+            <p>The check-in window is temporarily frozen by the administrator. Please wait; it will resume shortly.</p>
+          </div>
+        </div>
+      )}
+
+      {showExpired && (
+        <div className="expiry-overlay">
+          <div className="overlay-content">
+            <div className="overlay-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h2>Check-in Closed</h2>
+            <p>{isHardExpired ? 'This event ended more than 24 hours ago.' : 'The attendance window for this event has expired.'}</p>
+          </div>
+        </div>
+      )}
 
       <div className="attendance-form">
         {/* Header */}
@@ -191,13 +323,23 @@ export default function AttendanceForm({ eventId, type }) {
             style={{ width: '100%', borderRadius: '12px', marginBottom: '20px', objectFit: 'cover', height: '160px' }}
           />
           <h1>
-            {type === 'worker' ? 'Worker Check-In' : 'Mark Attendance'}
+            {eventData ? eventData.name : (type === 'worker' ? 'Worker Check-In' : 'Mark Attendance')}
           </h1>
           <p>
-            {type === 'worker'
-              ? 'Sign in to register your service for today.'
-              : 'Fill in your details to confirm your attendance.'}
+            {eventData 
+              ? `Check-in for ${new Date(eventData.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`
+              : (type === 'worker'
+                ? 'Sign in to register your service for today.'
+                : 'Fill in your details to confirm your attendance.')}
           </p>
+
+          {/* Timer Pill */}
+          {timeLeft !== null && (
+            <div className={`timer-pill ${timeLeft < 300000 ? 'danger' : timeLeft < 900000 ? 'warning' : ''}`}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Closes in {formatTime(timeLeft)}
+            </div>
+          )}
 
           {/* Station Badge */}
           <span className={`form-station-badge ${type}`}>

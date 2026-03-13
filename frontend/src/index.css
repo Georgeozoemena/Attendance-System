@@ -2400,3 +2400,83 @@ td[data-label="Name"] {
   border-color: var(--dc-blue);
   font-weight: 600;
 }
+
+/* ── Attendance Timer & Expiry ─────────────────────── */
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dc-blue);
+  font-variant-numeric: tabular-nums;
+  margin-top: 10px;
+}
+
+.timer-pill.warning {
+  color: var(--amber);
+  background: var(--amber-lt);
+  border-color: var(--amber-border);
+}
+
+.timer-pill.danger {
+  color: var(--red);
+  background: var(--red-lt);
+  border-color: var(--red-border);
+}
+
+.maintenance-overlay, 
+.expiry-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(12, 12, 14, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  animation: fadeUp 0.3s ease-out;
+}
+
+.overlay-content {
+  max-width: 400px;
+}
+
+.overlay-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--amber-lt);
+  color: var(--amber);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.expiry-overlay .overlay-icon {
+  background: var(--red-lt);
+  color: var(--red);
+}
+
+.overlay-content h2 {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  color: var(--text-1);
+}
+
+.overlay-content p {
+  font-size: 15px;
+  color: var(--text-3);
+  line-height: 1.6;
+}

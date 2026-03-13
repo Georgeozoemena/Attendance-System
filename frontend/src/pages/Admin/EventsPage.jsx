@@ -8,7 +8,12 @@ const EventsPage = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newEvent, setNewEvent] = useState({ name: '', type: 'Sunday Service', date: new Date().toISOString().split('T')[0] });
+    const [newEvent, setNewEvent] = useState({ 
+        name: '', 
+        type: 'Sunday Service', 
+        date: new Date().toISOString().split('T')[0],
+        expiry_duration: 60 // Default 60 minutes
+    });
 
     useEffect(() => {
         fetchEvents();
@@ -53,7 +58,12 @@ const EventsPage = () => {
             if (res.ok) {
                 fetchEvents();
                 setShowAddModal(false);
-                setNewEvent({ name: '', type: 'Sunday Service', date: new Date().toISOString().split('T')[0] });
+                setNewEvent({ 
+                    name: '', 
+                    type: 'Sunday Service', 
+                    date: new Date().toISOString().split('T')[0],
+                    expiry_duration: 60 
+                });
             }
         } catch (err) {
             console.error('Failed to create event', err);
@@ -64,13 +74,26 @@ const EventsPage = () => {
         if (!window.confirm('Are you sure you want to delete this event?')) return;
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch(`${API_BASE}/api/events/${id}`, {
+            const res = await fetch(`/api/events/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': adminKey }
             });
             if (res.ok) fetchEvents();
         } catch (err) {
             console.error('Failed to delete event', err);
+        }
+    };
+
+    const handleToggleFreeze = async (id) => {
+        try {
+            const adminKey = localStorage.getItem('adminKey');
+            const res = await fetch(`/api/events/${id}/freeze`, {
+                method: 'PATCH',
+                headers: { 'Authorization': adminKey }
+            });
+            if (res.ok) fetchEvents();
+        } catch (err) {
+            console.error('Failed to toggle freeze', err);
         }
     };
 
@@ -129,11 +152,18 @@ const EventsPage = () => {
                                         </span>
                                     </td>
                                     <td>
-                                        <span className={`status-pill ${event.status}`}>
-                                            {event.status}
+                                        <span className={`status-pill ${event.status} ${event.is_frozen ? 'frozen' : ''}`}>
+                                            {event.is_frozen ? 'FROZEN' : event.status}
                                         </span>
                                     </td>
                                     <td style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                            className={`small-btn text ${event.is_frozen ? 'warning' : ''}`} 
+                                            onClick={() => handleToggleFreeze(event.id)}
+                                            style={{ color: event.is_frozen ? '#f59e0b' : 'var(--primary)' }}
+                                        >
+                                            {event.is_frozen ? 'Resume' : 'Freeze'}
+                                        </button>
                                         <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
                                         <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
                                         <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
@@ -187,6 +217,22 @@ const EventsPage = () => {
                                     value={newEvent.date}
                                     onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label>Expiry Duration (Minutes)</label>
+                                <select
+                                    className="input"
+                                    value={newEvent.expiry_duration}
+                                    onChange={e => setNewEvent({ ...newEvent, expiry_duration: parseInt(e.target.value) })}
+                                >
+                                    <option value="15">15 Minutes</option>
+                                    <option value="30">30 Minutes</option>
+                                    <option value="60">1 Hour (60m)</option>
+                                    <option value="120">2 Hours (120m)</option>
+                                    <option value="240">4 Hours (240m)</option>
+                                    <option value="480">8 Hours (480m)</option>
+                                    <option value="1440">24 Hours (Max)</option>
+                                </select>
                             </div>
                             <div className="modal-actions">
                                 <button type="submit" className="modal-btn primary">Create Event</button>
