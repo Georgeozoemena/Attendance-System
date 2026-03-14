@@ -37,7 +37,7 @@ router.get('/', auth, async (req, res) => {
 
 // POST /api/events
 router.post('/', auth, async (req, res) => {
-    const { name, type, date, expiry_duration } = req.body;
+    const { name, type, date, start_time, expiry_duration } = req.body;
     if (!name || !type || !date) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -47,10 +47,10 @@ router.post('/', auth, async (req, res) => {
 
     try {
         await dbRun(
-            'INSERT INTO events (id, name, type, date, status, expiry_duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [id, name, type, date, 'active', expiry_duration || 0, createdAt]
+            'INSERT INTO events (id, name, type, date, start_time, status, expiry_duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [id, name, type, date, start_time || null, 'active', expiry_duration || 0, createdAt]
         );
-        res.status(201).json({ id, name, type, date, status: 'active', expiry_duration: expiry_duration || 0, createdAt });
+        res.status(201).json({ id, name, type, date, start_time: start_time || null, status: 'active', expiry_duration: expiry_duration || 0, createdAt });
     } catch (err) {
         console.error('Failed to create event', err);
         res.status(500).json({ error: 'Failed to create event' });

@@ -60,6 +60,8 @@ export default function AttendanceForm({ eventId, type }) {
   const [eventData, setEventData] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [isHardExpired, setIsHardExpired] = useState(false);
+  const [isNotStarted, setIsNotStarted] = useState(false);
+  const [timeUntilStart, setTimeUntilStart] = useState(null);
 
   const fetchEventDetails = useCallback(async () => {
     try {
@@ -87,12 +89,34 @@ export default function AttendanceForm({ eventId, type }) {
     }
 
     const timer = setInterval(() => {
-      const start = new Date(eventData.created_at).getTime();
       const now = Date.now();
+      let startObj = new Date(eventData.created_at);
+      
+      // If there's a specific start time, construct the exact start Date
+      if (eventData.start_time) {
+        // Assume start_time is "HH:mm" on the same day as eventData.date
+        const eventDateStr = eventData.date; // e.g. "2026-03-14"
+        startObj = new Date(`${eventDateStr}T${eventData.start_time}:00`);
+      }
+      
+      const startTimeMs = startObj.getTime();
+      
+      // Check if event hasn't started yet
+      if (now < startTimeMs) {
+        setIsNotStarted(true);
+        setTimeUntilStart(startTimeMs - now);
+        setTimeLeft(null);
+        return;
+      }
+      
+      // Event has started
+      setIsNotStarted(false);
+      setTimeUntilStart(null);
+
       const totalDuration = (eventData.expiry_duration || 0) * 60 * 1000;
       
-      // Hard 24h limit
-      if (now - start > 24 * 60 * 60 * 1000) {
+      // Hard 24h limit (e.g. 24h after start)
+      if (now - startTimeMs > 24 * 60 * 60 * 1000) {
         setIsHardExpired(true);
         clearInterval(timer);
         return;
@@ -103,7 +127,7 @@ export default function AttendanceForm({ eventId, type }) {
         return;
       }
 
-      const timeElapsed = now - start;
+      const timeElapsed = now - startTimeMs;
       const frozenOffset = (eventData.total_frozen_ms || 0);
       const activeElapsed = timeElapsed - frozenOffset;
       const remaining = totalDuration - activeElapsed;
@@ -285,6 +309,7 @@ export default function AttendanceForm({ eventId, type }) {
 
   const showMaintenance = eventData?.is_frozen === 1;
   const showExpired = (timeLeft !== null && timeLeft <= 0) || isHardExpired;
+  const showNotStarted = isNotStarted;
 
   return (
     <div className="attendance-form-container">
@@ -310,6 +335,23 @@ export default function AttendanceForm({ eventId, type }) {
             </div>
             <h2>Check-in Closed</h2>
             <p>{isHardExpired ? 'This event ended more than 24 hours ago.' : 'The attendance window for this event has expired.'}</p>
+          </div>
+        </div>
+      )}
+
+      {showNotStarted && (
+        <div className="expiry-overlay not-started-overlay">
+          <div className="overlay-content">
+            <div className="overlay-icon" style={{ color: 'var(--primary)' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h2>Check-in Not Yet Open</h2>
+            <p>This event's attendance window will open soon.</p>
+            {timeUntilStart !== null && (
+              <div className="timer-pill" style={{ marginTop: '16px', fontSize: '16px', padding: '8px 16px' }}>
+                Opens in {formatTime(timeUntilStart)}
+              </div>
+            )}
           </div>
         </div>
       )}

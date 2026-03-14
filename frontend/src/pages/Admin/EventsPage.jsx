@@ -12,6 +12,7 @@ const EventsPage = () => {
         name: '', 
         type: 'Sunday Service', 
         date: new Date().toISOString().split('T')[0],
+        start_time: '',
         expiry_duration: 60 // Default 60 minutes
     });
 
@@ -62,6 +63,7 @@ const EventsPage = () => {
                     name: '', 
                     type: 'Sunday Service', 
                     date: new Date().toISOString().split('T')[0],
+                    start_time: '',
                     expiry_duration: 60 
                 });
             }
@@ -144,7 +146,10 @@ const EventsPage = () => {
                         {events.length > 0 ? (
                             events.map(event => (
                                 <tr key={event.id}>
-                                    <td>{new Date(event.date).toLocaleDateString()}</td>
+                                    <td>
+                                        {new Date(event.date).toLocaleDateString()}
+                                        {event.start_time ? ` ${event.start_time}` : ''}
+                                    </td>
                                     <td className="name-cell">{event.name}</td>
                                     <td>
                                         <span className={`badge ${event.type.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -217,6 +222,26 @@ const EventsPage = () => {
                                     value={newEvent.date}
                                     onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label>Start Time (Optional)</label>
+                                <input
+                                    type="time"
+                                    className="input"
+                                    value={newEvent.start_time}
+                                    onChange={e => setNewEvent({ ...newEvent, start_time: e.target.value })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        backgroundColor: 'var(--bg-main)'
+                                    }}
+                                />
+                                <small style={{ color: 'var(--text-light)', marginTop: '4px', display: 'block' }}>
+                                    Leave blank to start immediately on creation.
+                                </small>
                             </div>
                             <div className="form-group">
                                 <label>Expiry Duration (Minutes)</label>

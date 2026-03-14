@@ -62,6 +62,7 @@ db.serialize(() => {
             name TEXT NOT NULL, 
             type TEXT NOT NULL, 
             date TEXT NOT NULL, 
+            start_time TEXT,
             status TEXT DEFAULT 'active', 
             expiry_duration INTEGER DEFAULT 0,
             is_frozen INTEGER DEFAULT 0,
@@ -92,8 +93,8 @@ db.serialize(() => {
     });
 
     // Handle schema updates for existing installations
-    db.run(`PRAGMA table_info(events)`, [], (err, rows) => {
-        // This is a simplified check. sqlite3 .get or .all would be cleaner but let's stick to basics here.
+    db.run(`ALTER TABLE events ADD COLUMN start_time TEXT`, [], (err) => {
+        // Ignore error if column already exists
     });
 
     console.log('Database initialized');
