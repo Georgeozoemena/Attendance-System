@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { connectToSSE } from '../services/realtime.js';
 import { API_BASE } from '../services/api.js';
 
@@ -7,35 +7,57 @@ export function useAttendanceData() {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [error, setError] = useState(null);
 
+    const [currentEventId, setCurrentEventId] = useState('');
+    const activeFilterRef = useRef('');
+
     // SSE subscription for live updates
     useEffect(() => {
         const es = connectToSSE(`${API_BASE}/api/admin/stream`);
         es.onmessage = (ev) => {
             try {
                 const data = JSON.parse(ev.data);
-                setItems((s) => [data, ...s]);
+                const currentFilter = activeFilterRef.current;
+                
+                // Only add to stream if we're viewing All Events OR the stream matches our specific filtered event
+                if (!currentFilter || currentFilter === data.eventId) {
+                    setItems((s) => [data, ...s]);
+                }
             } catch (err) {
                 console.error('Invalid SSE payload', err);
             }
         };
         es.onerror = (err) => {
             console.error('SSE error', err);
-            // Optional: setError('Real-time connection lost');
         };
         return () => es.close();
     }, []);
 
-    // Initial (best-effort) load of historical rows
+    // Initial load defaults to the current active event
     useEffect(() => {
-        async function loadHistory() {
+        async function loadInitial() {
             setLoadingHistory(true);
             try {
                 const adminKey = localStorage.getItem('adminKey');
-                const resp = await fetch(`${API_BASE}/api/attendance`, {
-                    headers: {
-                        'x-admin-key': adminKey || ''
-                    }
+                
+                // 1. Fetch current active event
+                const evRes = await fetch(`${API_BASE}/api/events/current`);
+                let targetEventId = '';
+                if (evRes.ok) {
+                    const evData = await evRes.json();
+                    targetEventId = evData.id;
+                    setCurrentEventId(targetEventId);
+                    activeFilterRef.current = targetEventId;
+                }
+
+                // 2. Fetch attendance for that event (or all history if none active)
+                const fetchUrl = targetEventId 
+                    ? `${API_BASE}/api/attendance?eventId=${targetEventId}` 
+                    : `${API_BASE}/api/attendance`;
+
+                const resp = await fetch(fetchUrl, {
+                    headers: { 'x-admin-key': adminKey || '' }
                 });
+
                 if (resp.status === 401) {
                     localStorage.removeItem('adminKey');
                     window.location.href = '/admin/login';
@@ -47,23 +69,25 @@ export function useAttendanceData() {
                 }
                 const data = await resp.json();
                 if (Array.isArray(data) && data.length) {
-                    // Prepend historical items (create new array to avoid mutation)
                     const reversedData = [...data].reverse();
                     setItems((s) => [...reversedData, ...s]);
                 }
             } catch (err) {
-                console.warn('Failed to load history', err);
-                setError('Failed to load historical data');
+                console.warn('Failed to load initial history', err);
+                setError('Failed to load initial data');
             } finally {
                 setLoadingHistory(false);
             }
         }
 
-        loadHistory();
+        loadInitial();
     }, []);
 
     const fetchByEvent = async (eventId) => {
-        if (!eventId) return;
+        // Allow empty string '' to fetch all items
+        if (eventId === undefined || eventId === null) return;
+        
+        activeFilterRef.current = eventId;
         setLoadingHistory(true);
         try {
             const params = new URLSearchParams();
@@ -94,5 +118,5 @@ export function useAttendanceData() {
         }
     };
 
-    return { items, loadingHistory, error, fetchByEvent };
+    return { items, loadingHistory, error, fetchByEvent, currentEventId };
 }

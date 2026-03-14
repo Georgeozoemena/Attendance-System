@@ -7,13 +7,20 @@ import TopNavbar from '../../components/Admin/TopNavbar.jsx';
 import { API_BASE } from '../../services/api';
 
 export default function AdminLayout() {
-    const { items, loadingHistory, fetchByEvent } = useAttendanceData();
+    const { items, loadingHistory, fetchByEvent, currentEventId } = useAttendanceData();
     const [showExportModal, setShowExportModal] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [eventFilter, setEventFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [events, setEvents] = useState([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
+
+    React.useEffect(() => {
+        // Sync the local filter state with the auto-detected current event
+        if (currentEventId) {
+            setEventFilter(currentEventId);
+        }
+    }, [currentEventId]);
 
     React.useEffect(() => {
         const fetchEventsList = async () => {
