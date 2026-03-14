@@ -4,6 +4,7 @@ import { useAttendanceData } from '../../hooks/useAttendanceData.js';
 import DashboardHeader from '../../components/Admin/DashboardHeader.jsx';
 import Sidebar from '../../components/Admin/Sidebar.jsx';
 import TopNavbar from '../../components/Admin/TopNavbar.jsx';
+import { API_BASE } from '../../services/api';
 
 export default function AdminLayout() {
     const { items, loadingHistory, fetchByEvent } = useAttendanceData();
@@ -19,7 +20,7 @@ export default function AdminLayout() {
             setLoadingEvents(true);
             try {
                 const adminKey = localStorage.getItem('adminKey');
-                const res = await fetch('/api/events', {
+                const res = await fetch(`${API_BASE}/api/events`, {
                     headers: { 'Authorization': adminKey }
                 });
                 if (res.ok) {

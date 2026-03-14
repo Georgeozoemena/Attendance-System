@@ -22,7 +22,7 @@ const EventsPage = () => {
     const fetchEvents = async () => {
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch('/api/events', {
+            const res = await fetch(`${API_BASE}/api/events`, {
                 headers: { 'Authorization': adminKey }
             });
             if (res.status === 401) {
@@ -47,7 +47,7 @@ const EventsPage = () => {
         e.preventDefault();
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch('/api/events', {
+            const res = await fetch(`${API_BASE}/api/events`, {
                 method: 'POST',
                 headers: {
                     'Authorization': adminKey,
@@ -74,7 +74,7 @@ const EventsPage = () => {
         if (!window.confirm('Are you sure you want to delete this event?')) return;
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch(`/api/events/${id}`, {
+            const res = await fetch(`${API_BASE}/api/events/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': adminKey }
             });
@@ -87,7 +87,7 @@ const EventsPage = () => {
     const handleToggleFreeze = async (id) => {
         try {
             const adminKey = localStorage.getItem('adminKey');
-            const res = await fetch(`/api/events/${id}/freeze`, {
+            const res = await fetch(`${API_BASE}/api/events/${id}/freeze`, {
                 method: 'PATCH',
                 headers: { 'Authorization': adminKey }
             });

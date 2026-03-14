@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { queueAdd, tryFlushQueue, saveUser } from '../../services/localCache.js';
-import { lookupAttendance } from '../../services/api.js';
+import { lookupAttendance, API_BASE } from '../../services/api.js';
 import Toast from '../UI/Toast.jsx';
 
 const REQUIRED_FIELDS = ['name', 'email', 'phone', 'address', 'occupation', 'gender', 'nationality'];
@@ -63,7 +63,7 @@ export default function AttendanceForm({ eventId, type }) {
 
   const fetchEventDetails = useCallback(async () => {
     try {
-      const res = await fetch(`/api/events/current`);
+      const res = await fetch(`${API_BASE}/api/events/current`);
       if (res.ok) {
         const event = await res.json();
         setEventData(event);
