@@ -265,7 +265,13 @@ router.post('/attendance', async (req, res) => {
     const result = await SheetsClient.appendRow(sanitizedPayload);
     
     // broadcast to SSE admin clients
-    const message = JSON.stringify({ ...sanitizedPayload, uniqueCode: result?.uniqueCode });
+    // Merge sanitizedPayload (which guaranteed has eventId) with result (which has uniqueCode)
+    const broadcastData = { 
+      ...sanitizedPayload, 
+      ...(result || {}) 
+    };
+    
+    const message = JSON.stringify(broadcastData);
     sseClients.forEach((c) => {
       try {
         c.res.write(`data: ${message}\n\n`);
@@ -273,7 +279,7 @@ router.post('/attendance', async (req, res) => {
         console.warn('Failed to send SSE to a client', err);
       }
     });
-    res.status(201).json(result || sanitizedPayload);
+    res.status(201).json(broadcastData);
   } catch (err) {
     if (err.code === 'DUPLICATE_ATTENDANCE') {
       return res.status(409).json({ error: 'You have already marked attendance for this event today!' });
