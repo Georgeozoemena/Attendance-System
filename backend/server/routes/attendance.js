@@ -35,19 +35,31 @@ router.get('/attendance', auth, async (req, res) => {
 
   try {
     let rows;
+    const { dbAll } = require('../database');
     if (eventId) {
-      // Fetch from local SQLite for speed and reliability
-      const { dbAll } = require('../database');
       rows = await dbAll('SELECT * FROM attendance_local WHERE eventId = ? ORDER BY createdAt DESC', [eventId]);
-      
-      // If local is empty, fallback to Sheets (for backward compatibility)
-      if (rows.length === 0) {
-        rows = await SheetsClient.lookup({ eventId });
-      }
     } else {
-      rows = await SheetsClient.lookup();
+      rows = await dbAll('SELECT * FROM attendance_local ORDER BY createdAt DESC');
     }
-    res.json(rows);
+    
+    // Map SQLite column names to expected frontend object structure to maintain compatibility
+    const mappedRows = rows.map(r => ({
+      eventId: r.eventId,
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      address: r.address,
+      occupation: r.occupation,
+      firstTimer: r.firstTimer === 1 ? 'Yes' : 'No',
+      gender: r.gender,
+      nationality: r.nationality,
+      department: r.department,
+      type: r.type,
+      uniqueCode: r.uniqueCode,
+      timestamp: r.createdAt
+    }));
+    
+    res.json(mappedRows);
   } catch (err) {
     console.error('History fetch failed', err);
     res.status(500).json({ error: 'fetch failed' });
@@ -57,14 +69,15 @@ router.get('/attendance', auth, async (req, res) => {
 // GET /api/members (Unique list of members/workers)
 router.get('/members', auth, async (req, res) => {
   try {
-    const allRecords = await SheetsClient.lookup();
+    const { dbAll } = require('../database');
+    const allRecords = await dbAll('SELECT * FROM attendance_local ORDER BY createdAt DESC');
     const membersMap = new Map();
 
     allRecords.forEach(record => {
       const code = record.uniqueCode;
       if (!code) return;
 
-      if (!membersMap.has(code) || new Date(record.timestamp) > new Date(membersMap.get(code).lastSeen)) {
+      if (!membersMap.has(code) || new Date(record.createdAt) > new Date(membersMap.get(code).lastSeen)) {
         membersMap.set(code, {
           uniqueCode: code,
           name: record.name,
@@ -72,7 +85,7 @@ router.get('/members', auth, async (req, res) => {
           phone: record.phone,
           category: record.type || 'member',
           department: record.department,
-          lastSeen: record.timestamp,
+          lastSeen: record.createdAt,
         });
       }
     });
@@ -87,21 +100,19 @@ router.get('/members', auth, async (req, res) => {
 // GET /api/absentees (People who were here last week but not today)
 router.get('/absentees', auth, async (req, res) => {
   try {
-    const allRecords = await SheetsClient.lookup();
+    const { dbAll } = require('../database');
+    const allRecords = await dbAll('SELECT * FROM attendance_local ORDER BY createdAt DESC');
 
-    // Sort records by timestamp descending
-    const sorted = allRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // Identify the latest two "service" dates (simplification)
-    const dates = [...new Set(sorted.map(r => r.timestamp.split('T')[0]))].slice(0, 2);
+    // Identify the latest two "service" dates
+    const dates = [...new Set(allRecords.map(r => r.createdAt.split('T')[0]))].slice(0, 2);
 
     if (dates.length < 1) return res.json([]);
 
     const today = dates[0];
     const lastSession = dates[1];
 
-    const todayAttendees = new Set(sorted.filter(r => r.timestamp.startsWith(today)).map(r => r.uniqueCode));
-    const lastSessionAttendees = sorted.filter(r => r.timestamp.startsWith(lastSession));
+    const todayAttendees = new Set(allRecords.filter(r => r.createdAt.startsWith(today)).map(r => r.uniqueCode));
+    const lastSessionAttendees = allRecords.filter(r => r.createdAt.startsWith(lastSession));
 
     const absentees = [];
     const processedCodes = new Set();
@@ -112,7 +123,7 @@ router.get('/absentees', auth, async (req, res) => {
           uniqueCode: record.uniqueCode,
           name: record.name,
           phone: record.phone,
-          lastSeen: record.timestamp,
+          lastSeen: record.createdAt,
           category: record.type || 'member'
         });
         processedCodes.add(record.uniqueCode);
@@ -129,9 +140,8 @@ router.get('/absentees', auth, async (req, res) => {
 // GET /api/members/:code (Member profile with history)
 router.get('/members/:code', auth, async (req, res) => {
   try {
-    const allRecords = await SheetsClient.lookup();
-    const history = allRecords.filter(r => r.uniqueCode === req.params.code)
-      .sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+    const { dbAll } = require('../database');
+    const history = await dbAll('SELECT * FROM attendance_local WHERE uniqueCode = ? ORDER BY createdAt DESC', [req.params.code]);
 
     if (history.length === 0) {
       return res.status(404).json({ error: 'Member not found' });
@@ -141,7 +151,7 @@ router.get('/members/:code', auth, async (req, res) => {
       ...history[0],
       history: history.map(h => ({
         eventId: h.eventId,
-        createdAt: h.createdAt || h.timestamp,
+        createdAt: h.createdAt,
         type: h.type
       }))
     };
@@ -172,7 +182,27 @@ router.get('/lookup', async (req, res) => {
   }
 
   try {
-    const rows = await SheetsClient.lookup({ email, phone, eventId });
+    const { dbAll } = require('../database');
+    let query = 'SELECT * FROM attendance_local WHERE ';
+    const params = [];
+    const conditions = [];
+
+    if (email) {
+      conditions.push('email = ?');
+      params.push(email);
+    }
+    if (phone) {
+      conditions.push('phone = ?');
+      params.push(phone);
+    }
+    if (eventId) {
+      conditions.push('eventId = ?');
+      params.push(eventId);
+    }
+
+    query += conditions.join(' AND ') + ' ORDER BY createdAt DESC LIMIT 1';
+    
+    const rows = await dbAll(query, params);
     res.json(rows);
   } catch (err) {
     console.error('Lookup failed', err);
