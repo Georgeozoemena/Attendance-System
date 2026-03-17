@@ -8,6 +8,7 @@ const messagesRouter = require('./routes/messages');
 const eventsRouter = require('./routes/events');
 const analyticsRouter = require('./routes/analytics');
 const insightsRouter = require('./routes/insights');
+const assistantRouter = require('./routes/admin_assistant');
 
 // Validate critical environment variables
 const requiredEnv = ['APPS_SCRIPT_WEBHOOK'];
@@ -35,6 +36,7 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/analytics', insightsRouter); // Mount insights under /api/analytics
+app.use('/api/admin/assistant', assistantRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

@@ -6,6 +6,7 @@ import AttendanceCategoryView from '../../components/Admin/AttendanceCategoryVie
 import AdminQRGenerator from '../../components/Admin/AdminQRGenerator.jsx';
 import MessagesPage from './MessagesPage.jsx';
 import PredictiveAnalytics from '../../components/Admin/PredictiveAnalytics.jsx';
+import AdminAssistantPage from './AdminAssistant.jsx';
 
 export function AdminLive() {
     const { items } = useOutletContext();
@@ -147,4 +148,8 @@ export function AdminAbsentees() {
 import SettingsPage from './SettingsPage.jsx';
 export function AdminSettings() {
     return <SettingsPage />;
+}
+
+export function AdminAssistant() {
+    return <AdminAssistantPage />;
 }

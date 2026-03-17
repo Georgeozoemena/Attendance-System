@@ -12,12 +12,12 @@ import AdminLoginPage from './pages/Admin/AdminLoginPage.jsx';
 import ProtectedRoute from './components/Admin/ProtectedRoute.jsx';
 import {
   AdminLive, AdminAnalytics, AdminPredictive, AdminQR,
-  AdminMembers, AdminAbsentees, AdminEvents, AdminSettings
+  AdminMembers, AdminAbsentees, AdminEvents, AdminSettings, AdminAssistant
 } from './pages/Admin/AdminWrapper.jsx';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<App />}>
           <Route index element={<QRPage />} />
@@ -38,6 +38,7 @@ createRoot(document.getElementById('root')).render(
               <Route path="qrcode" element={<AdminQR />} />
               <Route path="members" element={<AdminMembers />} />
               <Route path="absentees" element={<AdminAbsentees />} />
+              <Route path="assistant" element={<AdminAssistant />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Route>

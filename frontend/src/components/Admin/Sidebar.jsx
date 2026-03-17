@@ -56,6 +56,13 @@ const Sidebar = () => {
                         </svg>
                         Events
                     </NavLink>
+                    <NavLink to="/admin/assistant" className={linkClass}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l4-4-4-4h12a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        AI Assistant
+                    </NavLink>
                 </div>
 
                 <div className="nav-group">
