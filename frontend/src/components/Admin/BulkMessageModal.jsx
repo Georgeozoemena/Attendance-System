@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { EVENT_CONFIGS } from '../../utils/events';
 import { API_BASE } from '../../services/api';
 
-const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
+const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend, insights = { loyal: [], atRisk: [], recentFirstTimers: [] } }) => {
     const [message, setMessage] = useState('');
     const [scheduledTime, setScheduledTime] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -87,6 +87,12 @@ const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
             return recipients.filter(r => r.firstTimer);
         } else if (recipientFilter === 'members') {
             return recipients.filter(r => !r.firstTimer);
+        } else if (recipientFilter === 'loyal') {
+            return insights.loyal || [];
+        } else if (recipientFilter === 'atRisk') {
+            return insights.atRisk || [];
+        } else if (recipientFilter === 'recentFirstTimers') {
+            return insights.recentFirstTimers || [];
         }
         return recipients;
     }
@@ -247,8 +253,11 @@ const BulkMessageModal = ({ isOpen, onClose, recipients = [], onSend }) => {
                             onChange={(e) => setRecipientFilter(e.target.value)}
                         >
                             <option value="all">All Recipients ({recipients.length})</option>
-                            <option value="firstTimer">First Timers ({recipients.filter(r => r.firstTimer).length})</option>
-                            <option value="members">Members ({recipients.filter(r => !r.firstTimer).length})</option>
+                            <option value="firstTimer">Total First Timers ({recipients.filter(r => r.firstTimer).length})</option>
+                            <option value="recentFirstTimers">Recent First Timers ({insights.recentFirstTimers?.length || 0})</option>
+                            <option value="members">Regular Members ({recipients.filter(r => !r.firstTimer).length})</option>
+                            <option value="loyal">Loyal Superstars ({insights.loyal?.length || 0})</option>
+                            <option value="atRisk">At-Risk (Missing 2wks) ({insights.atRisk?.length || 0})</option>
                         </select>
                     </div>
 

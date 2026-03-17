@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { queueAdd, tryFlushQueue, saveUser } from '../../services/localCache.js';
 import { lookupAttendance, API_BASE } from '../../services/api.js';
@@ -15,6 +15,7 @@ function validate(form, type) {
   // Fields required for Members only
   if (type === 'member') {
     if (!form.address || form.address.trim().length < 3) errs.address = 'Please enter your address';
+    if (!form.birthday) errs.birthday = 'Please select your birthday';
     if (!form.occupation || form.occupation.trim().length < 2) errs.occupation = 'Please enter your occupation';
     if (!form.gender) errs.gender = 'Please select your gender';
     if (!form.nationality || form.nationality.trim().length < 2) errs.nationality = 'Please enter your nationality';
@@ -25,14 +26,31 @@ function validate(form, type) {
   return errs;
 }
 
-export default function AttendanceForm({ eventId, type }) {
+export default function AttendanceForm({ eventId, type, isAdmin }) {
   const navigate = useNavigate();
+
+  const [allEvents, setAllEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(eventId);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetch(`${API_BASE}/api/events`, {
+        headers: { 'x-admin-key': localStorage.getItem('adminKey') }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setAllEvents(data);
+        })
+        .catch(err => console.error('Failed to fetch all events', err));
+    }
+  }, [isAdmin]);
 
   const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
+    birthday: '',
     occupation: '',
     firstTimer: false,
     gender: '',
@@ -40,6 +58,8 @@ export default function AttendanceForm({ eventId, type }) {
     department: '',
     type: type || 'member'
   });
+
+  const effectiveEventId = isAdmin && selectedEventId === 'admin-manual' ? (allEvents[0]?.id || eventId) : (selectedEventId || eventId);
 
   // Sync type prop changes (e.g. when switching Member/Worker station)
   useEffect(() => {
@@ -53,7 +73,8 @@ export default function AttendanceForm({ eventId, type }) {
 
   const [loading, setLoading] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
-  const [prefilledFrom, setPrefilledFrom] = useState(null);
+  const [prefilledFrom, setPrefilledFrom] = useState(null); // 'phone' | 'email lookup' | 'smart lookup'
+  const [smartSuggestion, setSmartSuggestion] = useState(null);
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -91,16 +112,16 @@ export default function AttendanceForm({ eventId, type }) {
     const timer = setInterval(() => {
       const now = Date.now();
       let startObj = new Date(eventData.created_at);
-      
+
       // If there's a specific start time, construct the exact start Date
       if (eventData.start_time) {
         // Assume start_time is "HH:mm" on the same day as eventData.date
         const eventDateStr = eventData.date; // e.g. "2026-03-14"
         startObj = new Date(`${eventDateStr}T${eventData.start_time}:00`);
       }
-      
+
       const startTimeMs = startObj.getTime();
-      
+
       // Check if event hasn't started yet
       if (now < startTimeMs) {
         setIsNotStarted(true);
@@ -108,13 +129,13 @@ export default function AttendanceForm({ eventId, type }) {
         setTimeLeft(null);
         return;
       }
-      
+
       // Event has started
       setIsNotStarted(false);
       setTimeUntilStart(null);
 
       const totalDuration = (eventData.expiry_duration || 0) * 60 * 1000;
-      
+
       // Hard 24h limit (e.g. 24h after start)
       if (now - startTimeMs > 24 * 60 * 60 * 1000) {
         setIsHardExpired(true);
@@ -154,6 +175,9 @@ export default function AttendanceForm({ eventId, type }) {
 
   const field = useCallback((name, value) => {
     setForm(f => ({ ...f, [name]: value }));
+    if (name === 'name') {
+      setSmartSuggestion(null); // Clear smart suggestion if name is being typed
+    }
     // Only clear errors inline (don't add new ones) until user has tried to submit
     if (submitted && errors[name]) {
       const e = validate({ ...form, [name]: value }, type);
@@ -161,9 +185,44 @@ export default function AttendanceForm({ eventId, type }) {
     }
   }, [form, errors, submitted, type]);
 
+  // --- Smart/Fuzzy Lookup on Name ---
+  const lastLookupRef = useRef('');
+  useEffect(() => {
+    const name = form.name || '';
+    if (name.length < 4 || prefilledFrom || type === 'worker' || name === lastLookupRef.current) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/lookup/smart?name=${encodeURIComponent(name)}`);
+        if (resp.ok) {
+          const matches = await resp.json();
+          if (matches.length > 0 && matches[0].score < 1.0) {
+            setSmartSuggestion(matches[0].profile);
+          } else {
+            setSmartSuggestion(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Smart lookup failed', err);
+      }
+      lastLookupRef.current = name;
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [form.name, prefilledFrom, type]);
+
+  async function handleApplySmartSuggestion() {
+    if (!smartSuggestion) return;
+    setForm(s => ({ ...s, ...smartSuggestion, type: s.type, firstTimer: false }));
+    setPrefilledFrom('smart lookup');
+    setSmartSuggestion(null);
+    setErrors({});
+    setToast({ message: 'Welcome back! We found your profile.', type: 'info' });
+  }
+
   // --- Prefill on phone blur ---
   async function handlePhoneBlur() {
-    if (!form.phone || form.phone.length < 5 || prefilledFrom === 'remote') return;
+    if (!form.phone || form.phone.length < 5 || prefilledFrom === 'remote' || prefilledFrom === 'smart lookup') return;
     setLookingUp(true);
     try {
       // Check if already checked in today for this event
@@ -181,11 +240,17 @@ export default function AttendanceForm({ eventId, type }) {
       const global = await lookupAttendance({ phone: form.phone });
       if (Array.isArray(global) && global.length > 0) {
         const user = global[0];
+        const lastVisit = new Date(user.createdAt).toLocaleDateString();
+        const isWorker = user.type === 'worker';
+        const welcomeMsg = isWorker 
+          ? `Welcome back, ${user.name}! Ready for service today? ⚡`
+          : `Great to see you again, ${user.name}! (Last visit: ${lastVisit})`;
+
         setToast({
           message: (
             <div className="one-tap-checkin">
               <span style={{ display: 'block', marginBottom: '8px' }}>
-                Welcome back, <strong>{user.name}</strong>!
+                {welcomeMsg}
               </span>
               <button
                 onClick={() => handleOneTapSubmit(user)}
@@ -197,9 +262,9 @@ export default function AttendanceForm({ eventId, type }) {
               </button>
               <button
                 onClick={() => {
-                   setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
-                   setPrefilledFrom('manual');
-                   setToast(null);
+                  setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
+                  setPrefilledFrom('manual');
+                  setToast(null);
                 }}
                 style={{ background: 'none', border: 'none', color: '#fff', textDecoration: 'underline', fontSize: '12px', marginTop: '8px', cursor: 'pointer', width: '100%' }}
               >
@@ -220,19 +285,19 @@ export default function AttendanceForm({ eventId, type }) {
   async function handleOneTapSubmit(userData) {
     setLoading(true);
     try {
-      const payload = { 
-        ...userData, 
-        eventId, 
+      const payload = {
+        ...userData,
+        eventId,
         createdAt: new Date().toISOString(),
         firstTimer: false // Definitely not a first timer if we found them
       };
-      
+
       // Save locally and queue
       saveUser(userData.phone, payload);
       queueAdd(eventId, payload);
-      
+
       await tryFlushQueue();
-      
+
       navigate('/thank-you', {
         state: { name: userData.name }
       });
@@ -246,7 +311,7 @@ export default function AttendanceForm({ eventId, type }) {
 
   // --- Prefill on email blur ---
   async function handleEmailBlur() {
-    if (!form.email || prefilledFrom) return;
+    if (!form.email || prefilledFrom === 'phone' || prefilledFrom === 'smart lookup') return;
     setLookingUp(true);
     try {
       const found = await lookupAttendance({ email: form.email, eventId });
@@ -283,15 +348,19 @@ export default function AttendanceForm({ eventId, type }) {
         return;
       }
 
-      const payload = { ...form, eventId, createdAt: new Date().toISOString() };
+      const payload = { ...form, eventId: effectiveEventId, createdAt: new Date().toISOString() };
       saveUser(form.phone, payload);
-      queueAdd(eventId, payload);
+      queueAdd(effectiveEventId, payload);
 
       const results = await tryFlushQueue();
       const lastResult = results && results.length > 0 ? results[results.length - 1] : null;
 
       navigate('/thank-you', {
-        state: { name: form.name, uniqueCode: lastResult?.appended?.uniqueCode }
+        state: { 
+          name: form.name, 
+          uniqueCode: lastResult?.appended?.uniqueCode,
+          streak: lastResult?.streak || 0
+        }
       });
     } catch (err) {
       if (err.status === 409) {
@@ -307,9 +376,9 @@ export default function AttendanceForm({ eventId, type }) {
 
   const isFirstTimerType = type === 'member'; // Members could be first-timers; workers usually not
 
-  const showMaintenance = eventData?.is_frozen === 1;
-  const showExpired = (timeLeft !== null && timeLeft <= 0) || isHardExpired;
-  const showNotStarted = isNotStarted;
+  const showMaintenance = !isAdmin && eventData?.is_frozen === 1;
+  const showExpired = !isAdmin && ((timeLeft !== null && timeLeft <= 0) || isHardExpired);
+  const showNotStarted = !isAdmin && isNotStarted;
 
   return (
     <div className="attendance-form-container">
@@ -319,7 +388,7 @@ export default function AttendanceForm({ eventId, type }) {
         <div className="maintenance-overlay">
           <div className="overlay-content">
             <div className="overlay-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
             </div>
             <h2>Currently experiencing maintenance</h2>
             <p>The check-in window is temporarily frozen by the administrator. Please wait; it will resume shortly.</p>
@@ -331,7 +400,7 @@ export default function AttendanceForm({ eventId, type }) {
         <div className="expiry-overlay">
           <div className="overlay-content">
             <div className="overlay-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
             </div>
             <h2>Check-in Closed</h2>
             <p>{isHardExpired ? 'This event ended more than 24 hours ago.' : 'The attendance window for this event has expired.'}</p>
@@ -343,7 +412,7 @@ export default function AttendanceForm({ eventId, type }) {
         <div className="expiry-overlay not-started-overlay">
           <div className="overlay-content">
             <div className="overlay-icon" style={{ color: 'var(--primary)' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
             </div>
             <h2>Check-in Not Yet Open</h2>
             <p>This event's attendance window will open soon.</p>
@@ -368,7 +437,7 @@ export default function AttendanceForm({ eventId, type }) {
             {eventData ? eventData.name : (type === 'worker' ? 'Worker Check-In' : 'Mark Attendance')}
           </h1>
           <p>
-            {eventData 
+            {eventData
               ? `Check-in for ${new Date(eventData.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`
               : (type === 'worker'
                 ? 'Sign in to register your service for today.'
@@ -378,15 +447,35 @@ export default function AttendanceForm({ eventId, type }) {
           {/* Timer Pill */}
           {timeLeft !== null && (
             <div className={`timer-pill ${timeLeft < 300000 ? 'danger' : timeLeft < 900000 ? 'warning' : ''}`}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
               Closes in {formatTime(timeLeft)}
             </div>
           )}
 
           {/* Station Badge */}
           <span className={`form-station-badge ${type}`}>
-            {type === 'worker' ? '⚡ Worker Station' : '✦ Member Station'}
+            {isAdmin ? '🛠️ Admin Manual Entry' : (type === 'worker' ? '⚡ Worker Station' : '✦ Member Station')}
           </span>
+
+          {isAdmin && allEvents.length > 0 && (
+            <div className="form-field" style={{ marginTop: '20px', textAlign: 'left' }}>
+              <label>Select Target Event</label>
+              <select 
+                className="form-input select" 
+                value={selectedEventId === 'admin-manual' ? (allEvents[0]?.id || '') : selectedEventId}
+                onChange={e => setSelectedEventId(e.target.value)}
+              >
+                {allEvents.map(ev => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.name} ({new Date(ev.date).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+              <p className="helper" style={{ fontSize: '11px', marginTop: '4px' }}>
+                Admin bypass: Expiry and Freeze rules are ignored for manual entry.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Prefill Notice */}
@@ -417,7 +506,39 @@ export default function AttendanceForm({ eventId, type }) {
               onChange={e => field('name', e.target.value)}
               onBlur={() => submitted && setErrors(prev => ({ ...prev, name: validate(form).name || '' }))}
             />
-            {errors.name && <p className="field-error">{errors.name}</p>}
+            {errors.name && <span className="error-text">{errors.name}</span>}
+            
+            {smartSuggestion && !prefilledFrom && (
+              <div className="smart-suggestion animate-fade-in" style={{ 
+                marginTop: '8px', 
+                padding: '12px', 
+                background: 'var(--dc-blue-lt)', 
+                border: '1px solid var(--dc-blue-border)', 
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
+                  Are you <strong>{smartSuggestion.name}</strong>?
+                </div>
+                <button 
+                  type="button"
+                  onClick={handleApplySmartSuggestion}
+                  style={{ 
+                    background: 'var(--dc-blue)', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '4px 10px', 
+                    borderRadius: '4px', 
+                    fontSize: '11px',
+                    fontWeight: '600'
+                  }}
+                >
+                  Yes, pre-fill form
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Email */}
@@ -469,6 +590,17 @@ export default function AttendanceForm({ eventId, type }) {
                   onChange={e => field('address', e.target.value)}
                 />
                 {errors.address && <p className="field-error">{errors.address}</p>}
+              </div>
+
+              <div className="form-field">
+                <label>Birthday <span className="req">*</span></label>
+                <input
+                  className={`form-input ${errors.birthday ? 'error' : ''}`}
+                  type="date"
+                  value={form.birthday}
+                  onChange={e => field('birthday', e.target.value)}
+                />
+                {errors.birthday && <p className="field-error">{errors.birthday}</p>}
               </div>
 
               <div className="form-field">

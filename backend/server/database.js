@@ -77,6 +77,7 @@ db.serialize(() => {
             email TEXT NOT NULL,
             phone TEXT NOT NULL,
             address TEXT,
+            birthday TEXT,
             occupation TEXT,
             firstTimer BOOLEAN,
             gender TEXT,
@@ -94,6 +95,10 @@ db.serialize(() => {
 
     // Handle schema updates for existing installations
     db.run(`ALTER TABLE events ADD COLUMN start_time TEXT`, [], (err) => {
+        // Ignore error if column already exists
+    });
+
+    db.run(`ALTER TABLE attendance_local ADD COLUMN birthday TEXT`, [], (err) => {
         // Ignore error if column already exists
     });
 

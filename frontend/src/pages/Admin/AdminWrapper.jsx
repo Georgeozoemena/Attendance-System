@@ -5,6 +5,7 @@ import AnalyticsDashboard from '../../components/Admin/AnalyticsDashboard.jsx';
 import AttendanceCategoryView from '../../components/Admin/AttendanceCategoryView.jsx';
 import AdminQRGenerator from '../../components/Admin/AdminQRGenerator.jsx';
 import MessagesPage from './MessagesPage.jsx';
+import PredictiveAnalytics from '../../components/Admin/PredictiveAnalytics.jsx';
 
 export function AdminLive() {
     const { items } = useOutletContext();
@@ -97,6 +98,10 @@ export function AdminLive() {
 export function AdminAnalytics() {
     const { items } = useOutletContext();
     return <AnalyticsDashboard attendanceData={items} />;
+}
+
+export function AdminPredictive() {
+    return <PredictiveAnalytics />;
 }
 
 export function AdminCategories() {

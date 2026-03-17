@@ -6,6 +6,7 @@ import AnalyticsDashboard from '../../components/Admin/AnalyticsDashboard.jsx';
 import AttendanceCategoryView from '../../components/Admin/AttendanceCategoryView.jsx';
 import DashboardHeader from '../../components/Admin/DashboardHeader.jsx';
 import LiveTable from '../../components/Admin/LiveTable.jsx';
+import MemberDetailsModal from '../../components/Admin/MemberDetailsModal.jsx';
 
 /*
   Responsive Admin Dashboard
@@ -22,6 +23,33 @@ export default function AdminDashboard() {
   const [eventFilter, setEventFilter] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedMemberCode, setSelectedMemberCode] = useState(null);
+  const [velocityAlert, setVelocityAlert] = useState(false);
+
+  // Poll check-in velocity during active event
+  React.useEffect(() => {
+    if (activeTab !== 'live') return;
+    
+    const checkVelocity = async () => {
+      try {
+        const adminKey = localStorage.getItem('adminKey');
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/admin/velocity`, {
+          headers: { 'x-admin-key': adminKey }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          // Show alert if no check-ins in 5 mins AND we have history (meaning event should be active)
+          setVelocityAlert(data.suggestFreeze && items.length > 0);
+        }
+      } catch (err) {
+        console.warn('Velocity check failed', err);
+      }
+    };
+
+    const timer = setInterval(checkVelocity, 60000); // Check every minute
+    checkVelocity();
+    return () => clearInterval(timer);
+  }, [activeTab, items.length]);
 
   // --- Export Helpers ---
   function downloadCsv(rows) {
@@ -123,8 +151,34 @@ export default function AdminDashboard() {
         onExport={() => setShowExportModal(true)}
       />
 
+      {velocityAlert && (
+        <div className="animate-fade-in" style={{ 
+          background: 'var(--amber-lt)', 
+          border: '1px solid var(--amber-border)', 
+          padding: '12px 20px', 
+          borderRadius: 'var(--radius)', 
+          marginBottom: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{ color: 'var(--amber)', fontSize: '20px' }}>⚠️</div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ fontSize: '13px', color: 'var(--amber-dk)', margin: 0 }}>Low Activity Detected</h4>
+            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>No check-ins in the last 5 minutes. Consider freezing the timer if there's a delay.</p>
+          </div>
+          <button 
+            className="modal-btn" 
+            style={{ padding: '6px 12px', fontSize: '11px', borderColor: 'var(--amber-border)' }}
+            onClick={() => setVelocityAlert(false)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="attendance-form" style={{ marginTop: 8, background: activeTab === 'qrcode' ? 'transparent' : 'var(--card)' }}>
-        {activeTab === 'live' && <LiveTable items={items} />}
+        {activeTab === 'live' && <LiveTable items={items} onRowClick={setSelectedMemberCode} />}
         {activeTab === 'analysis' && <AnalyticsDashboard attendanceData={items} />}
         {activeTab === 'categories' && <AttendanceCategoryView data={items} />}
         {activeTab === 'qrcode' && (
@@ -133,6 +187,13 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {selectedMemberCode && (
+        <MemberDetailsModal
+          memberCode={selectedMemberCode}
+          onClose={() => setSelectedMemberCode(null)}
+        />
+      )}
 
       {showExportModal && (
         <div className="modal-overlay" onClick={() => setShowExportModal(false)}>

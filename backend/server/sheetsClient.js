@@ -17,6 +17,7 @@ db.serialize(() => {
             email TEXT,
             phone TEXT,
             address TEXT,
+            birthday TEXT,
             occupation TEXT,
             firstTimer INTEGER DEFAULT 0,
             gender TEXT,
@@ -56,7 +57,7 @@ async function forwardToSheets(payload) {
 async function appendRow(payload) {
   const {
     id, createdAt, name, email, phone,
-    address, occupation, firstTimer, gender,
+    address, birthday, occupation, firstTimer, gender,
     nationality, department, type, eventId, uniqueCode
   } = payload;
 
@@ -78,11 +79,11 @@ async function appendRow(payload) {
 
   await dbRun(`
         INSERT OR REPLACE INTO attendance
-        (id, createdAt, name, email, phone, address, occupation, firstTimer, gender, nationality, department, type, eventId, uniqueCode)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, createdAt, name, email, phone, address, birthday, occupation, firstTimer, gender, nationality, department, type, eventId, uniqueCode)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
     id, createdAt, name, email, phone,
-    address, occupation,
+    address, birthday, occupation,
     firstTimer ? 1 : 0,
     gender, nationality, department,
     type || 'member',

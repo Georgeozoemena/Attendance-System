@@ -7,6 +7,7 @@ export default function AttendanceFormPage() {
   const [searchParams] = useSearchParams();
   const [eventId, setEventId] = useState(searchParams.get('eventId'));
   const type = searchParams.get('type') || 'member';
+  const isAdmin = searchParams.get('admin') === 'true';
   const [loading, setLoading] = useState(!eventId);
   
   useEffect(() => {
@@ -39,5 +40,5 @@ export default function AttendanceFormPage() {
     );
   }
   
-  return <AttendanceForm eventId={eventId} type={type} />;
+  return <AttendanceForm eventId={eventId} type={type} isAdmin={isAdmin} />;
 }

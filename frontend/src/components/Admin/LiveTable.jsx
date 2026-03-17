@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function LiveTable({ items }) {
+export default function LiveTable({ items, onRowClick }) {
     if (items.length === 0) {
         return (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-4)' }}>
@@ -27,16 +27,20 @@ export default function LiveTable({ items }) {
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone</th>
+                        <th>Address</th>
+                        <th>Birthday</th>
                         <th>First Timer</th>
                         <th>Department</th>
                         <th>Event</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {items.map((row, i) => (
-                        <tr key={row.id || i}>
+                    {items.map((row, i) => {
+                        const t = row.timestamp || row.createdAt;
+                        return (
+                        <tr key={row.id || i} style={{ cursor: onRowClick ? 'pointer' : 'default' }} onClick={() => onRowClick && row.uniqueCode && onRowClick(row.uniqueCode)}>
                             <td style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
-                                {row.createdAt ? new Date(row.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                {t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
                             </td>
                             <td>
                                 <span className={`badge-pill ${row.type || 'member'}`}>
@@ -47,8 +51,12 @@ export default function LiveTable({ items }) {
                             <td className="name-cell">{row.name}</td>
                             <td style={{ color: 'var(--text-3)' }}>{row.email}</td>
                             <td style={{ color: 'var(--text-3)' }}>{row.phone}</td>
+                            <td style={{ color: 'var(--text-3)' }}>{row.address || '—'}</td>
+                            <td style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                                {row.birthday ? new Date(row.birthday).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
+                            </td>
                             <td>
-                                {row.firstTimer
+                                {row.firstTimer && row.firstTimer !== 'No'
                                     ? <span className="badge-pill" style={{ background: 'var(--purple-lt)', color: 'var(--purple)' }}>Yes 🎉</span>
                                     : <span style={{ color: 'var(--text-4)', fontSize: 12 }}>No</span>
                                 }
@@ -56,7 +64,8 @@ export default function LiveTable({ items }) {
                             <td style={{ color: 'var(--text-3)' }}>{row.department || '—'}</td>
                             <td style={{ color: 'var(--text-3)', fontSize: 12 }}>{row.eventId}</td>
                         </tr>
-                    ))}
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

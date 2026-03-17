@@ -1,6 +1,79 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
+
+// Simple Levenshtein distance for fuzzy matching
+function levenshtein(a, b) {
+  const tmp = [];
+  for (let i = 0; i <= a.length; i++) { tmp[i] = [i]; }
+  for (let j = 0; j <= b.length; j++) { tmp[0][j] = j; }
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      tmp[i][j] = Math.min(
+        tmp[i - 1][j] + 1,
+        tmp[i][j - 1] + 1,
+        tmp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return tmp[a.length][b.length];
+}
+
+function calculateSimilarity(s1, s2) {
+  if (!s1 || !s2) return 0;
+  s1 = s1.toLowerCase().trim();
+  s2 = s2.toLowerCase().trim();
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  if (longer.length === 0) return 1.0;
+  return (longer.length - levenshtein(longer, shorter)) / parseFloat(longer.length);
+}
+
+/**
+ * Calculates attendance streak for a member
+ */
+async function getAttendanceStreak(uniqueCode) {
+  if (!uniqueCode) return 0;
+  const { dbAll } = require('../database');
+  try {
+    // 1. Get all unique dates this person attended
+    const userAttendance = await dbAll(`
+      SELECT DISTINCT substr(createdAt, 1, 10) as date 
+      FROM attendance_local 
+      WHERE uniqueCode = ? 
+      ORDER BY date DESC
+    `, [uniqueCode]);
+
+    if (userAttendance.length === 0) return 0;
+
+    // 2. Get all distinct active event dates in the system (up to most recent attendance)
+    // We only care about events of the same type or all? Usually streak is across all main services.
+    const allSystemEvents = await dbAll(`
+      SELECT DISTINCT date 
+      FROM events 
+      WHERE status = 'active' 
+      ORDER BY date DESC
+    `);
+
+    const userDates = new Set(userAttendance.map(d => d.date));
+    let streak = 0;
+
+    for (const event of allSystemEvents) {
+      if (userDates.has(event.date)) {
+        streak++;
+      } else {
+        // If they missed an event that occurred before their last check-in, streak breaks.
+        // But what if the event is "today" and they haven't checked in yet? 
+        // This function is usually called AFTER insertion.
+        break;
+      }
+    }
+    return streak;
+  } catch (err) {
+    console.error('Streak calculation failed:', err);
+    return 0;
+  }
+}
 const SheetsClient = require('../sheetsClient');
 const auth = require('../middleware/auth');
 
@@ -41,14 +114,14 @@ router.get('/attendance', auth, async (req, res) => {
     } else {
       rows = await dbAll('SELECT * FROM attendance_local ORDER BY createdAt DESC');
     }
-    
-    // Map SQLite column names to expected frontend object structure to maintain compatibility
+
     const mappedRows = rows.map(r => ({
       eventId: r.eventId,
       name: r.name,
       email: r.email,
       phone: r.phone,
       address: r.address,
+      birthday: r.birthday,
       occupation: r.occupation,
       firstTimer: r.firstTimer === 1 ? 'Yes' : 'No',
       gender: r.gender,
@@ -58,7 +131,7 @@ router.get('/attendance', auth, async (req, res) => {
       uniqueCode: r.uniqueCode,
       timestamp: r.createdAt
     }));
-    
+
     res.json(mappedRows);
   } catch (err) {
     console.error('History fetch failed', err);
@@ -137,18 +210,88 @@ router.get('/absentees', auth, async (req, res) => {
   }
 });
 
+// GET /api/lookup/smart (Fuzzy matching for form pre-filling)
+router.get('/lookup/smart', async (req, res) => {
+  const { name, phone } = req.query;
+  if (!name && !phone) return res.json([]);
+
+  try {
+    const { dbAll } = require('../database');
+    // Fetch unique members (most recent record for each phone)
+    const records = await dbAll(`
+      SELECT * FROM attendance_local 
+      GROUP BY phone 
+      ORDER BY createdAt DESC 
+      LIMIT 1000
+    `);
+
+    let matches = [];
+    records.forEach(r => {
+      let score = 0;
+      if (phone && r.phone === phone) score = 1.0;
+      else if (name && r.name) {
+        score = calculateSimilarity(name, r.name);
+      }
+
+      if (score > 0.8) {
+        matches.push({
+          score,
+          profile: {
+            name: r.name,
+            email: r.email,
+            phone: r.phone,
+            address: r.address,
+            birthday: r.birthday,
+            occupation: r.occupation,
+            gender: r.gender,
+            nationality: r.nationality,
+            department: r.department,
+            uniqueCode: r.uniqueCode
+          }
+        });
+      }
+    });
+
+    // Return best match
+    matches.sort((a, b) => b.score - a.score);
+    res.json(matches.slice(0, 3));
+  } catch (err) {
+    console.error('Smart lookup failed', err);
+    res.status(500).json({ error: 'Smart lookup failed' });
+  }
+});
+
+// GET /api/admin/velocity (Check-in rate monitoring)
+router.get('/admin/velocity', auth, async (req, res) => {
+  try {
+    const { dbGet } = require('../database');
+    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const result = await dbGet(`
+      SELECT COUNT(*) as count FROM attendance_local 
+      WHERE createdAt > ?
+    `, [fiveMinsAgo]);
+    
+    // Suggest freeze if count is 0 or extremely low during active event
+    res.json({
+      count: result.count,
+      suggestFreeze: result.count === 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Velocity check failed' });
+  }
+});
+
 // GET /api/members/:code (Member profile with history)
 router.get('/members/:code', auth, async (req, res) => {
   try {
     const { dbAll } = require('../database');
     const history = await dbAll('SELECT * FROM attendance_local WHERE uniqueCode = ? ORDER BY createdAt DESC', [req.params.code]);
 
-    if (history.length === 0) {
-      return res.status(404).json({ error: 'Member not found' });
-    }
-
+    const streak = await getAttendanceStreak(req.params.code);
     const member = {
       ...history[0],
+      streak,
       history: history.map(h => ({
         eventId: h.eventId,
         createdAt: h.createdAt,
@@ -201,7 +344,7 @@ router.get('/lookup', async (req, res) => {
     }
 
     query += conditions.join(' AND ') + ' ORDER BY createdAt DESC LIMIT 1';
-    
+
     const rows = await dbAll(query, params);
     res.json(rows);
   } catch (err) {
@@ -215,6 +358,7 @@ router.post('/attendance', async (req, res) => {
   const payload = req.body || {};
 
   // Sanitize input fields
+  const typeForm = sanitizeString(payload.type) || 'member';
   const sanitizedPayload = {
     id: payload.id || uuidv4(),
     createdAt: payload.createdAt || new Date().toISOString(),
@@ -222,12 +366,13 @@ router.post('/attendance', async (req, res) => {
     email: sanitizeString(payload.email),
     phone: sanitizeString(payload.phone),
     address: sanitizeString(payload.address),
+    birthday: sanitizeString(payload.birthday),
     occupation: sanitizeString(payload.occupation),
-    firstTimer: payload.firstTimer,
+    firstTimer: typeForm === 'worker' ? false : payload.firstTimer,
     gender: sanitizeString(payload.gender),
     nationality: sanitizeString(payload.nationality),
     department: sanitizeString(payload.department),
-    type: sanitizeString(payload.type) || 'member',
+    type: typeForm,
     eventId: sanitizeString(payload.eventId)
   };
 
@@ -245,17 +390,30 @@ router.post('/attendance', async (req, res) => {
   }
 
   try {
+    const { dbRun, dbGet } = require('../database');
+
+    // 0. Server-side duplication check for the same phone + eventId + day
+    const todayStart = new Date().toISOString().split('T')[0];
+    const existing = await dbGet(`
+      SELECT id FROM attendance_local 
+      WHERE phone = ? AND eventId = ? AND createdAt LIKE ?
+      LIMIT 1
+    `, [sanitizedPayload.phone, sanitizedPayload.eventId, `${todayStart}%`]);
+
+    if (existing) {
+      return res.status(409).json({ error: 'You have already marked attendance for this event today!' });
+    }
+
     // 1. Persist to SQLite FIRST (Local source of truth)
-    const { dbRun } = require('../database');
     await dbRun(
       `INSERT INTO attendance_local (
-        id, eventId, name, email, phone, address, occupation, 
+        id, eventId, name, email, phone, address, birthday, occupation, 
         firstTimer, gender, nationality, department, type, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sanitizedPayload.id, sanitizedPayload.eventId, sanitizedPayload.name,
         sanitizedPayload.email, sanitizedPayload.phone, sanitizedPayload.address,
-        sanitizedPayload.occupation, sanitizedPayload.firstTimer ? 1 : 0,
+        sanitizedPayload.birthday, sanitizedPayload.occupation, sanitizedPayload.firstTimer ? 1 : 0,
         sanitizedPayload.gender, sanitizedPayload.nationality,
         sanitizedPayload.department, sanitizedPayload.type, sanitizedPayload.createdAt
       ]
@@ -263,14 +421,18 @@ router.post('/attendance', async (req, res) => {
 
     // 2. Sync to Google Sheets
     const result = await SheetsClient.appendRow(sanitizedPayload);
-    
+
+    // 3. Calculate Streak (New!)
+    const streak = await getAttendanceStreak(result?.uniqueCode);
+
     // broadcast to SSE admin clients
     // Merge sanitizedPayload (which guaranteed has eventId) with result (which has uniqueCode)
-    const broadcastData = { 
-      ...sanitizedPayload, 
-      ...(result || {}) 
+    const broadcastData = {
+      ...sanitizedPayload,
+      ...(result || {}),
+      streak
     };
-    
+
     const message = JSON.stringify(broadcastData);
     sseClients.forEach((c) => {
       try {

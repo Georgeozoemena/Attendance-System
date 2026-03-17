@@ -10,6 +10,7 @@ const DashboardHeader = ({ onFilter, onExport }) => {
         switch (path) {
             case 'live': return 'Live Attendance';
             case 'analysis': return 'Analytics Overview';
+            case 'predictive': return 'Predictive Analytics';
             case 'categories': return 'Attendance Categories';
             case 'messages': return 'Mass Messaging';
             case 'qrcode': return 'QR Code Generator';
@@ -25,6 +26,7 @@ const DashboardHeader = ({ onFilter, onExport }) => {
         switch (path) {
             case 'live': return 'Real-time monitoring of all event check-ins.';
             case 'analysis': return 'In-depth analysis of attendance trends and demographics.';
+            case 'predictive': return 'Statistical attendance forecasting and trend projections.';
             case 'categories': return 'View and manage attendance by different categories.';
             case 'messages': return 'Send bulk messages to registered participants.';
             case 'qrcode': return 'Generate unique QR codes for event check-ins.';

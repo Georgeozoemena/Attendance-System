@@ -9,6 +9,7 @@ export default function MessagesPage() {
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [history, setHistory] = useState([]);
     const [scheduled, setScheduled] = useState([]);
+    const [insights, setInsights] = useState({ atRisk: [], loyal: [], recentFirstTimers: [] });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -17,13 +18,18 @@ export default function MessagesPage() {
 
     const fetchMessageData = async () => {
         try {
-            const [historyRes, scheduledRes] = await Promise.all([
-                fetch(`${API_BASE}/api/messages/history`),
-                fetch(`${API_BASE}/api/messages/scheduled`)
+            const adminKey = localStorage.getItem('adminKey');
+            const headers = { 'x-admin-key': adminKey };
+
+            const [historyRes, scheduledRes, insightsRes] = await Promise.all([
+                fetch(`${API_BASE}/api/messages/history`, { headers }),
+                fetch(`${API_BASE}/api/messages/scheduled`, { headers }),
+                fetch(`${API_BASE}/api/analytics/insights`, { headers })
             ]);
 
             if (historyRes.ok) setHistory(await historyRes.json());
             if (scheduledRes.ok) setScheduled(await scheduledRes.json());
+            if (insightsRes.ok) setInsights(await insightsRes.json());
         } catch (error) {
             console.error('Error fetching message data:', error);
         } finally {
@@ -225,16 +231,16 @@ export default function MessagesPage() {
             desc: `Send to all ${stats.totalAttendees} attendees`
         },
         {
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>,
-            bg: '#f0fdf4',
-            title: 'First Timers',
-            desc: `Send to ${stats.firstTimers} first timers`
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+            bg: '#fef2f2',
+            title: 'At-Risk Members',
+            desc: `Missed 2+ wks: ${insights.atRisk?.length || 0} people`
         },
         {
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
-            bg: '#faf5ff',
-            title: 'Members Only',
-            desc: `Send to ${stats.members} members`
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
+            bg: '#fffbeb',
+            title: 'Loyal Superstars',
+            desc: `3+ wk streak: ${insights.loyal?.length || 0} people`
         }
     ];
 
@@ -438,6 +444,7 @@ export default function MessagesPage() {
                     onClose={() => setShowBulkModal(false)}
                     recipients={items || []}
                     onSend={handleSendBulkMessage}
+                    insights={insights}
                 />
             )}
         </div>

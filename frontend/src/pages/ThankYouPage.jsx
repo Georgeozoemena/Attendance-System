@@ -4,7 +4,7 @@ import Confetti from 'react-confetti';
 
 export default function ThankYouPage() {
   const location = useLocation();
-  const { name, uniqueCode } = location.state || {};
+  const { name, uniqueCode, streak } = location.state || {};
   const [showConfetti, setShowConfetti] = React.useState(true);
 
   useEffect(() => {
@@ -75,6 +75,26 @@ export default function ThankYouPage() {
             }}>
               {uniqueCode}
             </div>
+          </div>
+        )}
+
+        {streak > 1 && (
+          <div className="animate-bounce-subtle" style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            color: '#ef4444'
+          }}>
+            <span style={{ fontSize: '20px' }}>🔥</span>
+            <span style={{ fontWeight: 700, fontSize: '14px' }}>
+              {streak} Week Streak! Keep it up!
+            </span>
           </div>
         )}
 

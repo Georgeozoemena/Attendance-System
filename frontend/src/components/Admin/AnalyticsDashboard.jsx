@@ -46,10 +46,11 @@ export default function AnalyticsDashboard({ attendanceData }) {
             const cat = r.type === 'worker' ? 'worker' : 'member';
             categoryCounts[cat]++;
 
-            if (r.firstTimer) ftYes++; else ftNo++;
+            if (r.firstTimer && r.firstTimer !== 'No') ftYes++; else ftNo++;
 
-            if (r.createdAt) {
-                const dateObj = new Date(r.createdAt);
+            const t = r.timestamp || r.createdAt;
+            if (t) {
+                const dateObj = new Date(t);
                 const dateKey = dateObj.toISOString().split('T')[0];
                 tCounts[dateKey] = (tCounts[dateKey] || 0) + 1;
 
