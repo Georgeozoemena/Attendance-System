@@ -2131,11 +2131,20 @@ td[data-label="Name"] {
   .admin-tabs-btns::-webkit-scrollbar {
     display: none;
   }
+}
 
+/* ── Global Table Responsiveness ────────────────── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
   .table-responsive {
-    margin: 0 -14px;
-    padding: 0 14px;
-    width: calc(100% + 28px);
+    margin: 0 -16px;
+    padding: 0 16px;
+    width: calc(100% + 32px);
   }
 }
 

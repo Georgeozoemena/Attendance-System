@@ -72,48 +72,50 @@ const MembersPage = () => {
             </div>
 
             <div className="data-table-card">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Phone</th>
-                            <th>Last Seen</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredMembers.length > 0 ? (
-                            filteredMembers.map(member => (
-                                <tr key={member.uniqueCode}>
-                                    <td className="code-cell">#{member.uniqueCode}</td>
-                                    <td className="name-cell">{member.name}</td>
-                                    <td>
-                                        <span className={`badge ${member.category}`}>
-                                            {member.category}
-                                        </span>
-                                    </td>
-                                    <td>{member.phone || '-'}</td>
-                                    <td>{new Date(member.lastSeen).toLocaleDateString()}</td>
-                                    <td>
-                                        <button
-                                            className="small-btn text"
-                                            onClick={() => setSelectedMemberCode(member.uniqueCode)}
-                                            style={{ color: 'var(--primary)', fontWeight: '600' }}
-                                        >
-                                            View profile
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="table-responsive">
+                    <table className="admin-table">
+                        <thead>
                             <tr>
-                                <td colSpan="6" className="empty-state">No members found matching your search.</td>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Phone</th>
+                                <th>Last Seen</th>
+                                <th>Actions</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {filteredMembers.length > 0 ? (
+                                filteredMembers.map(member => (
+                                    <tr key={member.uniqueCode}>
+                                        <td className="code-cell">#{member.uniqueCode}</td>
+                                        <td className="name-cell">{member.name}</td>
+                                        <td>
+                                            <span className={`badge ${member.category}`}>
+                                                {member.category}
+                                            </span>
+                                        </td>
+                                        <td>{member.phone || '-'}</td>
+                                        <td>{new Date(member.lastSeen).toLocaleDateString()}</td>
+                                        <td>
+                                            <button
+                                                className="small-btn text"
+                                                onClick={() => setSelectedMemberCode(member.uniqueCode)}
+                                                style={{ color: 'var(--primary)', fontWeight: '600' }}
+                                            >
+                                                View profile
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="empty-state">No members found matching your search.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {selectedMemberCode && (

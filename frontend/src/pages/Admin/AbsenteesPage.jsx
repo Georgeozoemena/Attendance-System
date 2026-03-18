@@ -48,36 +48,38 @@ const AbsenteesPage = () => {
             </div>
 
             <div className="data-table-card">
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Last Seen</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {absentees.length > 0 ? (
-                            absentees.map(person => (
-                                <tr key={person.uniqueCode}>
-                                    <td className="code-cell">#{person.uniqueCode}</td>
-                                    <td className="name-cell">{person.name}</td>
-                                    <td>{person.phone || '-'}</td>
-                                    <td>{new Date(person.lastSeen).toLocaleDateString()}</td>
-                                    <td>
-                                        <button className="small-btn outline">Follow Up</button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="table-responsive">
+                    <table className="admin-table">
+                        <thead>
                             <tr>
-                                <td colSpan="5" className="empty-state">No absentees found. Great attendance today!</td>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Last Seen</th>
+                                <th>Action</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {absentees.length > 0 ? (
+                                absentees.map(person => (
+                                    <tr key={person.uniqueCode}>
+                                        <td className="code-cell">#{person.uniqueCode}</td>
+                                        <td className="name-cell">{person.name}</td>
+                                        <td>{person.phone || '-'}</td>
+                                        <td>{new Date(person.lastSeen).toLocaleDateString()}</td>
+                                        <td>
+                                            <button className="small-btn outline">Follow Up</button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="empty-state">No absentees found. Great attendance today!</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

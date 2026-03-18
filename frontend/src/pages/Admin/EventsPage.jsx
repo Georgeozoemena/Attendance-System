@@ -132,56 +132,58 @@ const EventsPage = () => {
             </header>
 
             <div className="data-table-card" style={{ marginTop: '24px' }}>
-                <table className="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Event Name</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {events.length > 0 ? (
-                            events.map(event => (
-                                <tr key={event.id}>
-                                    <td>
-                                        {new Date(event.date).toLocaleDateString()}
-                                        {event.start_time ? ` ${event.start_time}` : ''}
-                                    </td>
-                                    <td className="name-cell">{event.name}</td>
-                                    <td>
-                                        <span className={`badge ${event.type.toLowerCase().replace(/\s+/g, '-')}`}>
-                                            {event.type}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`status-pill ${event.status} ${event.is_frozen ? 'frozen' : ''}`}>
-                                            {event.is_frozen ? 'FROZEN' : event.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ display: 'flex', gap: '8px' }}>
-                                        <button 
-                                            className={`small-btn text ${event.is_frozen ? 'warning' : ''}`} 
-                                            onClick={() => handleToggleFreeze(event.id)}
-                                            style={{ color: event.is_frozen ? '#f59e0b' : 'var(--primary)' }}
-                                        >
-                                            {event.is_frozen ? 'Resume' : 'Freeze'}
-                                        </button>
-                                        <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
-                                        <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
-                                        <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="table-responsive">
+                    <table className="admin-table">
+                        <thead>
                             <tr>
-                                <td colSpan="5" className="empty-state">No events found. Create your first event to get started.</td>
+                                <th>Date</th>
+                                <th>Event Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {events.length > 0 ? (
+                                events.map(event => (
+                                    <tr key={event.id}>
+                                        <td>
+                                            {new Date(event.date).toLocaleDateString()}
+                                            {event.start_time ? ` ${event.start_time}` : ''}
+                                        </td>
+                                        <td className="name-cell">{event.name}</td>
+                                        <td>
+                                            <span className={`badge ${event.type.toLowerCase().replace(/\s+/g, '-')}`}>
+                                                {event.type}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={`status-pill ${event.status} ${event.is_frozen ? 'frozen' : ''}`}>
+                                                {event.is_frozen ? 'FROZEN' : event.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ display: 'flex', gap: '8px' }}>
+                                            <button 
+                                                className={`small-btn text ${event.is_frozen ? 'warning' : ''}`} 
+                                                onClick={() => handleToggleFreeze(event.id)}
+                                                style={{ color: event.is_frozen ? '#f59e0b' : 'var(--primary)' }}
+                                            >
+                                                {event.is_frozen ? 'Resume' : 'Freeze'}
+                                            </button>
+                                            <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
+                                            <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
+                                            <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="empty-state">No events found. Create your first event to get started.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {showAddModal && (
