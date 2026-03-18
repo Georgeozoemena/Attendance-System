@@ -118,7 +118,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
     } = stats;
 
     return (
-        <div className="analytics-container animate-fade-in" style={{ height: 'calc(100vh - 120px)', overflowY: 'auto', padding: '20px' }}>
+        <div className="analytics-container animate-fade-in">
             {/* Top Summaries */}
             <div className="admin-card-grid">
                 <div className="stat-card">
@@ -152,15 +152,15 @@ export default function AnalyticsDashboard({ attendanceData }) {
             </div>
 
             {/* Main Graphs */}
-            <div className="analytics-layout" style={{ display: 'grid', gap: '20px', marginTop: '20px' }}>
+            <div className="analytics-charts-layout">
                 {/* Trend Section */}
-                <div className="data-table-card">
+                <div className="data-table-card chart-full-width">
                     <div className="table-header">
                         <div className="table-header-left">
                             <h3>Attendance Growth Trend</h3>
                         </div>
                     </div>
-                    <div style={{ padding: '20px' }}>
+                    <div className="chart-wrapper">
                         <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={trendData}>
                                 <defs>
@@ -191,11 +191,11 @@ export default function AnalyticsDashboard({ attendanceData }) {
                     </div>
                 </div>
 
-                <div className="admin-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                <div className="analytics-grid-two">
                     {/* Distribution Graphs */}
                     <div className="data-table-card">
                         <div className="table-header"><h3>Member vs Worker</h3></div>
-                        <div style={{ padding: '20px' }}>
+                        <div className="chart-wrapper">
                             <ResponsiveContainer width="100%" height={250}>
                                 <PieChart>
                                     <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={4}>
@@ -211,7 +211,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
 
                     <div className="data-table-card">
                         <div className="table-header"><h3>Status Distribution</h3></div>
-                        <div style={{ padding: '20px' }}>
+                        <div className="chart-wrapper">
                             <ResponsiveContainer width="100%" height={250}>
                                 <PieChart>
                                     <Pie data={firstTimerData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={4}>
@@ -226,10 +226,10 @@ export default function AnalyticsDashboard({ attendanceData }) {
                     </div>
                 </div>
 
-                <div className="admin-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
+                <div className="analytics-grid-two alt-min">
                     <div className="data-table-card">
                         <div className="table-header"><h3>Top Occupations</h3></div>
-                        <div style={{ padding: '20px' }}>
+                        <div className="chart-wrapper">
                             <ResponsiveContainer width="100%" height={250}>
                                 <BarChart data={occupationData} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
@@ -244,7 +244,7 @@ export default function AnalyticsDashboard({ attendanceData }) {
 
                     <div className="data-table-card">
                         <div className="table-header"><h3>Regional Distribution</h3></div>
-                        <div style={{ padding: '20px' }}>
+                        <div className="chart-wrapper">
                             <ResponsiveContainer width="100%" height={250}>
                                 <BarChart data={nationalityData} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
@@ -258,13 +258,13 @@ export default function AnalyticsDashboard({ attendanceData }) {
                     </div>
                 </div>
 
-                <div className="data-table-card">
+                <div className="data-table-card chart-full-width">
                     <div className="table-header">
                         <div className="table-header-left">
                             <h3>Departmental Activity</h3>
                         </div>
                     </div>
-                    <div style={{ padding: '20px' }}>
+                    <div className="chart-wrapper">
                         <ResponsiveContainer width="100%" height={Math.max(250, deptData.length * 30)}>
                             <BarChart data={deptData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -277,40 +277,42 @@ export default function AnalyticsDashboard({ attendanceData }) {
                     </div>
                 </div>
 
-                <div className="data-table-card">
+                <div className="data-table-card chart-full-width">
                     <div className="table-header"><h3>Top Participating Events</h3></div>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Event ID</th>
-                                <th>Total Attendees</th>
-                                <th>Engagement Percentage</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {eventData.map((ev, idx) => (
-                                <tr key={idx}>
-                                    <td className="code-cell">{ev.name}</td>
-                                    <td><strong>{ev.count}</strong></td>
-                                    <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <div style={{ flex: 1, height: '6px', background: 'var(--surface-3)', borderRadius: '3px' }}>
-                                                <div style={{
-                                                    width: `${(ev.count / attendanceData.length) * 100}%`,
-                                                    height: '100%',
-                                                    background: COLORS[idx % COLORS.length],
-                                                    borderRadius: '3px'
-                                                }} />
-                                            </div>
-                                            <span style={{ fontSize: '12px', minWidth: '40px' }}>
-                                                {((ev.count / attendanceData.length) * 100).toFixed(0)}%
-                                            </span>
-                                        </div>
-                                    </td>
+                    <div className="table-responsive">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Event ID</th>
+                                    <th>Attendees</th>
+                                    <th>Engagement</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {eventData.map((ev, idx) => (
+                                    <tr key={idx}>
+                                        <td className="code-cell">{ev.name}</td>
+                                        <td><strong>{ev.count}</strong></td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ flex: 1, height: '6px', background: 'var(--surface-3)', borderRadius: '3px' }}>
+                                                    <div style={{
+                                                        width: `${(ev.count / attendanceData.length) * 100}%`,
+                                                        height: '100%',
+                                                        background: COLORS[idx % COLORS.length],
+                                                        borderRadius: '3px'
+                                                    }} />
+                                                </div>
+                                                <span style={{ fontSize: '11px', minWidth: '35px' }}>
+                                                    {((ev.count / attendanceData.length) * 100).toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

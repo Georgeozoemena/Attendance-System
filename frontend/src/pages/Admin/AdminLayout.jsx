@@ -146,9 +146,30 @@ export default function AdminLayout() {
         setShowFilterModal(false);
     };
 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     return (
-        <div className='admin-layout-wrapper'>
-            <Sidebar />
+        <div className={`admin-layout-wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+            {/* Mobile Header - only visible below 768px via CSS */}
+            <header className="mobile-admin-header">
+                <button className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+                <div className="mobile-logo">
+                    <img src="/logo.png" alt="DC" />
+                    <span>Dominion City</span>
+                </div>
+                <div className="mobile-spacer" />
+            </header>
+
+            {/* Backdrop for mobile */}
+            {isSidebarOpen && (
+                <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />
+            )}
+
+            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="admin-main-content">
                 <TopNavbar onSearch={setSearchQuery} />
