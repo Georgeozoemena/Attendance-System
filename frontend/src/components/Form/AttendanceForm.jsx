@@ -228,11 +228,9 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
       // Check if already checked in today for this event
       const found = await lookupAttendance({ phone: form.phone, eventId });
       const today = new Date().toISOString().split('T')[0];
-      const alreadyMarked = Array.isArray(found) && found.find(r =>
-        String(r.createdAt || r.timestamp).startsWith(today)
-      );
+      const alreadyMarked = Array.isArray(found) && found.find(r => r.eventId === eventId);
       if (alreadyMarked) {
-        setToast({ message: 'You have already marked attendance for this event today!', type: 'info' });
+        setToast({ message: 'You have already marked attendance for this event!', type: 'info' });
         return;
       }
 
@@ -303,7 +301,10 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
       });
     } catch (err) {
       console.error('One-tap failed', err);
-      setToast({ message: 'Quick check-in failed. Please use the form.', type: 'error' });
+      const msg = err.message?.includes('409') 
+        ? 'You have already marked attendance for this event!'
+        : 'Quick check-in failed. Please use the form.';
+      setToast({ message: msg, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -341,9 +342,8 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
     try {
       // Final duplicate check
       const existing = await lookupAttendance({ phone: form.phone, eventId });
-      const today = new Date().toISOString().split('T')[0];
-      if (Array.isArray(existing) && existing.find(r => String(r.createdAt || r.timestamp).startsWith(today))) {
-        setToast({ message: 'You have already registered for this event today!', type: 'info' });
+      if (Array.isArray(existing) && existing.some(r => r.eventId === eventId)) {
+        setToast({ message: 'You have already registered for this event!', type: 'info' });
         setLoading(false);
         return;
       }
@@ -363,8 +363,8 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
         }
       });
     } catch (err) {
-      if (err.status === 409) {
-        setToast({ message: 'You have already marked attendance for this event today!', type: 'info' });
+      if (err.status === 409 || err.message?.includes('409') || err.message?.includes('already marked')) {
+        setToast({ message: 'You have already marked attendance for this event!', type: 'info' });
         setLoading(false);
         return;
       }

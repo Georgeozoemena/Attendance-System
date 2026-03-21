@@ -392,16 +392,15 @@ router.post('/attendance', async (req, res) => {
   try {
     const { dbRun, dbGet } = require('../database');
 
-    // 0. Server-side duplication check for the same phone + eventId + day
-    const todayStart = new Date().toISOString().split('T')[0];
+    // 0. Server-side duplication check for the same phone + eventId
     const existing = await dbGet(`
       SELECT id FROM attendance_local 
-      WHERE phone = ? AND eventId = ? AND createdAt LIKE ?
+      WHERE phone = ? AND eventId = ? 
       LIMIT 1
-    `, [sanitizedPayload.phone, sanitizedPayload.eventId, `${todayStart}%`]);
+    `, [sanitizedPayload.phone, sanitizedPayload.eventId]);
 
     if (existing) {
-      return res.status(409).json({ error: 'You have already marked attendance for this event today!' });
+      return res.status(409).json({ error: 'You have already marked attendance for this event!' });
     }
 
     // 1. Persist to SQLite FIRST (Local source of truth)
@@ -443,8 +442,8 @@ router.post('/attendance', async (req, res) => {
     });
     res.status(201).json(broadcastData);
   } catch (err) {
-    if (err.code === 'DUPLICATE_ATTENDANCE') {
-      return res.status(409).json({ error: 'You have already marked attendance for this event today!' });
+    if (err.code === 'DUPLICATE_ATTENDANCE' || err.message?.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({ error: 'You have already marked attendance for this event!' });
     }
     console.error('Failed to append', err);
     res.status(500).json({ error: 'persist failed' });

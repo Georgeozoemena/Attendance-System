@@ -93,6 +93,11 @@ db.serialize(() => {
         db.run(sql);
     });
 
+    // Add unique index to prevent duplicates at DB level
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_unique ON attendance_local (phone, eventId)`, [], (err) => {
+        if (err) console.warn('Could not create unique index (possible duplicates exist)', err.message);
+    });
+
     // Handle schema updates for existing installations
     db.run(`ALTER TABLE events ADD COLUMN start_time TEXT`, [], (err) => {
         // Ignore error if column already exists
