@@ -1,7 +1,5 @@
 /* ─────────────────────────────────────────────────────
-   CHURCH ATTENDANCE SYSTEM — Dark Premium Design
-   Inspired by Pewbeam.com aesthetic
-   Near-black · Off-white · Warm amber accent
+   CHURCH ATTENDANCE SYSTEM
    ───────────────────────────────────────────────────── */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -201,7 +199,7 @@ textarea {
 }
 
 /* ═══════════════════════════════════════════════════
-   SIDEBAR — Deep black, amber accents
+   SIDEBAR
 ═══════════════════════════════════════════════════ */
 
 .admin-sidebar {
@@ -314,13 +312,13 @@ textarea {
 
 .sidebar-link.active {
   background: var(--sidebar-active-bg);
-  color: var(--sidebar-active);
+  color: #fff;
   font-weight: 600;
 }
 
 .sidebar-link.active svg {
   opacity: 1;
-  color: var(--amber);
+  color: #fff;
 }
 
 /* Dropdown */
@@ -595,15 +593,14 @@ textarea {
 }
 
 .action-btn.primary {
-  background: var(--amber);
-  color: #000;
-  border-color: var(--amber);
+  background: var(--dc-blue);
+  color: #fff;
+  border-color: var(--dc-blue);
   font-weight: 600;
 }
 
 .action-btn.primary:hover {
-  background: var(--amber-dk);
-  border-color: var(--amber-dk);
+  background: var(--dc-blue-dk);
 }
 
 .action-btn svg {
@@ -666,13 +663,13 @@ textarea {
 }
 
 .stat-icon.green {
-  background: var(--green-lt);
-  color: var(--green);
+  /* background: var(--green-lt); */
+  color: #fff;
 }
 
 .stat-icon.purple {
-  background: var(--purple-lt);
-  color: var(--purple);
+  /* background: var(--purple-lt); */
+  color: #fff;
 }
 
 .stat-icon.amber {
@@ -999,15 +996,15 @@ td[data-label="Name"] {
 }
 
 .modal-btn.primary {
-  background: var(--amber);
-  color: #000;
-  border-color: var(--amber);
+  background: var(--dc-blue);
+  color: #fff;
+  border-color: var(--dc-blue);
   font-weight: 600;
 }
 
 .modal-btn.primary:hover {
-  background: var(--amber-dk);
-  border-color: var(--amber-dk);
+  background: var(--dc-blue-dk);
+  border-color: var(--dc-blue-dk);
 }
 
 .modal-btn.primary.danger {
@@ -1118,7 +1115,7 @@ td[data-label="Name"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--amber);
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -1175,7 +1172,7 @@ td[data-label="Name"] {
 }
 
 .station-select:focus {
-  border-color: var(--amber);
+  border-color: var(--dc-blue);
 }
 
 .station-toggle-btns {
@@ -1196,9 +1193,9 @@ td[data-label="Name"] {
 }
 
 .station-toggle-btns .toggle-btn.active {
-  background: var(--amber);
-  color: #000;
-  border-color: var(--amber);
+  background: var(--dc-blue);
+  color: #fff;
+  border-color: var(--dc-blue);
   font-weight: 600;
 }
 
@@ -1285,15 +1282,15 @@ td[data-label="Name"] {
 }
 
 .btn-station.primary {
-  background: var(--amber);
-  color: #000;
-  border-color: var(--amber);
+  background: var(--dc-blue);
+  color: #fff;
+  border-color: var(--dc-blue);
   font-weight: 600;
 }
 
 .btn-station.primary:hover {
-  background: var(--amber-dk);
-  border-color: var(--amber-dk);
+  background: var(--dc-blue-dk);
+  border-color: var(--dc-blue-dk);
 }
 
 .station-footer {
