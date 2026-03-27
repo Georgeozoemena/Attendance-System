@@ -11,12 +11,35 @@ export default function QuickCheckInPage() {
     const [success, setSuccess] = useState(null);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const eventId = searchParams.get('eventId') || 'default-event';
+    const [eventId, setEventId] = useState(searchParams.get('eventId'));
+    const [fetchingEvent, setFetchingEvent] = useState(!eventId);
+
+    React.useEffect(() => {
+        if (!eventId) {
+            const fetchCurrentEvent = async () => {
+                try {
+                    const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/events/current`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setEventId(data.id);
+                    } else {
+                        setEventId('default-event');
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch current event', err);
+                    setEventId('default-event');
+                } finally {
+                    setFetchingEvent(false);
+                }
+            };
+            fetchCurrentEvent();
+        }
+    }, [eventId]);
 
     const handleCheckIn = async (e) => {
         e.preventDefault();
-        if (!phone || phone.length < 5 || loading) {
-            if (!loading) setToast({ message: 'Please enter a valid phone number', type: 'error' });
+        if (!phone || phone.length < 5 || loading || fetchingEvent) {
+            if (!loading && !fetchingEvent) setToast({ message: 'Please enter a valid phone number', type: 'error' });
             return;
         }
         setLoading(true); setToast(null); setSuccess(null);
@@ -92,62 +115,71 @@ export default function QuickCheckInPage() {
                 <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#fafafa', marginBottom: '6px', letterSpacing: '-0.02em' }}>
                     Quick Check-in
                 </h1>
-                <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '24px' }}>
-                    Enter your phone number to mark attendance.
-                </p>
+                
+                {fetchingEvent ? (
+                    <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '24px' }}>
+                        Syncing with latest event...
+                    </p>
+                ) : (
+                    <>
+                        <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '24px' }}>
+                            Enter your phone number to mark attendance.
+                        </p>
 
-                {success && (
-                    <div style={{
-                        background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)',
-                        borderRadius: '8px', padding: '10px 14px', marginBottom: '16px',
-                        color: '#22c55e', fontSize: '13px', fontWeight: 500
-                    }}>
-                        ✓ {success}
-                    </div>
+                        {success && (
+                            <div style={{
+                                background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)',
+                                borderRadius: '8px', padding: '10px 14px', marginBottom: '16px',
+                                color: '#22c55e', fontSize: '13px', fontWeight: 500
+                            }}>
+                                ✓ {success}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleCheckIn}>
+                            <input
+                                type="tel"
+                                value={phone}
+                                onChange={e => setPhone(e.target.value)}
+                                placeholder="e.g. 08012345678"
+                                autoFocus
+                                style={{
+                                    width: '100%', padding: '11px 14px', fontSize: '15px',
+                                    borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)',
+                                    marginBottom: '12px', textAlign: 'center', letterSpacing: '1px',
+                                    background: 'rgba(255,255,255,0.04)', color: '#fafafa',
+                                    outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+                                    transition: 'border-color 0.15s'
+                                }}
+                                onFocus={e => e.target.style.borderColor = '#f59e0b'}
+                                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+                            />
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                style={{
+                                    width: '100%', padding: '11px', background: '#f59e0b', color: '#000',
+                                    border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700,
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    opacity: loading ? 0.6 : 1, fontFamily: 'inherit', transition: 'background 0.12s'
+                                }}
+                            >
+                                {loading ? 'Checking...' : 'Check In Now'}
+                            </button>
+                        </form>
+
+                        <button
+                            onClick={() => navigate(`/attend?eventId=${eventId}`)}
+                            style={{
+                                display: 'block', width: '100%', marginTop: '14px',
+                                color: '#52525b', background: 'none', border: 'none',
+                                fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', padding: '4px'
+                            }}
+                        >
+                            New here? Register first →
+                        </button>
+                    </>
                 )}
-
-                <form onSubmit={handleCheckIn}>
-                    <input
-                        type="tel"
-                        value={phone}
-                        onChange={e => setPhone(e.target.value)}
-                        placeholder="e.g. 08012345678"
-                        autoFocus
-                        style={{
-                            width: '100%', padding: '11px 14px', fontSize: '15px',
-                            borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)',
-                            marginBottom: '12px', textAlign: 'center', letterSpacing: '1px',
-                            background: 'rgba(255,255,255,0.04)', color: '#fafafa',
-                            outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
-                            transition: 'border-color 0.15s'
-                        }}
-                        onFocus={e => e.target.style.borderColor = '#f59e0b'}
-                        onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
-                    />
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            width: '100%', padding: '11px', background: '#f59e0b', color: '#000',
-                            border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700,
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.6 : 1, fontFamily: 'inherit', transition: 'background 0.12s'
-                        }}
-                    >
-                        {loading ? 'Checking...' : 'Check In Now'}
-                    </button>
-                </form>
-
-                <button
-                    onClick={() => navigate(`/attend?eventId=${eventId}`)}
-                    style={{
-                        display: 'block', width: '100%', marginTop: '14px',
-                        color: '#52525b', background: 'none', border: 'none',
-                        fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', padding: '4px'
-                    }}
-                >
-                    New here? Register first →
-                </button>
             </div>
         </div>
     );

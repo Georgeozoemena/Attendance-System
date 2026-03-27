@@ -3,11 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 export default function QRPage() {
   const [searchParams] = useSearchParams();
-  const eventId = searchParams.get('eventId') || 'default-event';
   const type = searchParams.get('type') || 'member';
 
-  const attendUrl = `/attend?eventId=${eventId}&type=${type}`;
-  const checkInUrl = `/check-in?eventId=${eventId}`;
+  const attendUrl = `/attend?type=${type}`;
+  const checkInUrl = `/check-in`;
 
   const isWorker = type === 'worker';
 

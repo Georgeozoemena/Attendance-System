@@ -46,8 +46,8 @@ export default function AdminQRGenerator({ eventId, initialCategory = 'member' }
         }
     };
 
-    // Append category type to the link
-    const link = `${window.location.origin}/attend?eventId=${selectedEventId}&type=${category}`;
+    // Append category type to the link - Persistent Role-Based Link
+    const link = `${window.location.origin}/attend?type=${category}`;
 
     const downloadQR = () => {
         const canvas = qrRef.current.querySelector('canvas');

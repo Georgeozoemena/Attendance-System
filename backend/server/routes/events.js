@@ -7,9 +7,8 @@ const auth = require('../middleware/auth');
 // GET /api/events/current (Public)
 router.get('/current', async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        // Find most recent active event for today
-        const event = await dbGet('SELECT * FROM events WHERE date = ? AND status = ? ORDER BY created_at DESC LIMIT 1', [today, 'active']);
+        // Find most recent active event
+        const event = await dbGet('SELECT * FROM events WHERE status = ? ORDER BY date DESC, created_at DESC LIMIT 1', ['active']);
         
         if (event) {
             res.json(event);
