@@ -40,18 +40,22 @@ export function useAttendanceData() {
                 const adminKey = localStorage.getItem('adminKey');
                 
                 // 1. Fetch current active event
-                const evRes = await fetch(`${API_BASE}/api/events/current`);
                 let targetEventId = '';
-                if (evRes.ok) {
-                    const evData = await evRes.json();
-                    targetEventId = evData.id;
-                    setCurrentEventId(targetEventId);
-                    activeFilterRef.current = targetEventId;
+                try {
+                    const evRes = await fetch(`${API_BASE}/api/events/current`);
+                    if (evRes.ok) {
+                        const evData = await evRes.json();
+                        targetEventId = evData.id || '';
+                        setCurrentEventId(targetEventId);
+                        activeFilterRef.current = targetEventId;
+                    }
+                } catch (evErr) {
+                    console.warn('Could not fetch current event, showing all records', evErr);
                 }
 
                 // 2. Fetch attendance for that event (or all history if none active)
                 const fetchUrl = targetEventId 
-                    ? `${API_BASE}/api/attendance?eventId=${targetEventId}` 
+                    ? `${API_BASE}/api/attendance?eventId=${encodeURIComponent(targetEventId)}` 
                     : `${API_BASE}/api/attendance`;
 
                 const resp = await fetch(fetchUrl, {

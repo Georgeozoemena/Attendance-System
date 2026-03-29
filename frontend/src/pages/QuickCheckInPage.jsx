@@ -66,7 +66,9 @@ export default function QuickCheckInPage() {
 
             if (user) {
                 saveUser(phone, user);
-                const payload = { ...user, eventId, createdAt: new Date().toISOString() };
+                // Strip stale fields from cached user and generate a fresh id
+                const { id: _oldId, createdAt: _oldTs, eventId: _oldEv, ...cleanUser } = user;
+                const payload = { ...cleanUser, id: crypto.randomUUID(), eventId, createdAt: new Date().toISOString() };
                 queueAdd(eventId, payload);
                 try {
                     await tryFlushQueue();

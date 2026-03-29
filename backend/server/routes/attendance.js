@@ -129,7 +129,7 @@ router.get('/attendance', auth, async (req, res) => {
       department: r.department,
       type: r.type,
       uniqueCode: r.uniqueCode,
-      timestamp: r.createdAt
+      createdAt: r.createdAt
     }));
 
     res.json(mappedRows);
