@@ -10,12 +10,9 @@ const analyticsRouter = require('./routes/analytics');
 const insightsRouter = require('./routes/insights');
 const assistantRouter = require('./routes/admin_assistant');
 
-// Validate critical environment variables
-const requiredEnv = ['APPS_SCRIPT_WEBHOOK'];
-const missingEnv = requiredEnv.filter(k => !process.env[k]);
-if (missingEnv.length > 0) {
-  console.error(`FATAL: Missing required environment variables: ${missingEnv.join(', ')}`);
-  process.exit(1);
+// Warn about optional environment variables
+if (!process.env.APPS_SCRIPT_WEBHOOK) {
+  console.warn('Warning: APPS_SCRIPT_WEBHOOK is not set. Google Sheets sync will be disabled.');
 }
 
 const app = express();
@@ -42,9 +39,6 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);
 
-  if (!process.env.APPS_SCRIPT_WEBHOOK) {
-    console.warn('Warning: APPS_SCRIPT_WEBHOOK is not set in environment. Backend will fail when attempting to persist.');
-  }
   if (!process.env.ADMIN_PASSWORD) {
     console.warn('Warning: ADMIN_PASSWORD is not set. Admin routes will be unprotected (INSECURE)!');
   }

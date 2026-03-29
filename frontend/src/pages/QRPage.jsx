@@ -6,7 +6,7 @@ export default function QRPage() {
   const type = searchParams.get('type') || 'member';
 
   const attendUrl = `/attend?type=${type}`;
-  const checkInUrl = `/check-in`;
+  const checkInUrl = `/check-in?type=${type}`;
 
   const isWorker = type === 'worker';
 
