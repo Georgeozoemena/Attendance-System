@@ -41,16 +41,32 @@ function generateSessionToken(expiry) {
  */
 function verifySessionToken(token) {
     try {
-        const [payload, hmac] = token.split('.');
+        const dotIndex = token.lastIndexOf('.');
+        if (dotIndex === -1) return null;
+        const payload = token.slice(0, dotIndex);
+        const hmac = token.slice(dotIndex + 1);
         if (!payload || !hmac) return null;
         const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
         const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-        // Constant-time comparison to prevent timing attacks
-        if (!crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(expected))) return null;
+        const hmacBuf = Buffer.from(hmac, 'hex');
+        const expectedBuf = Buffer.from(expected, 'hex');
+        // Buffers must be same length for timingSafeEqual
+        if (hmacBuf.length !== expectedBuf.length) return null;
+        if (!crypto.timingSafeEqual(hmacBuf, expectedBuf)) return null;
         return parseInt(payload, 10);
     } catch {
         return null;
     }
+}
+
+/**
+ * Safe constant-time string comparison that handles different byte lengths.
+ */
+function safeCompare(a, b) {
+    const aBuf = Buffer.from(a, 'utf8');
+    const bBuf = Buffer.from(b, 'utf8');
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
 router.post('/login', (req, res) => {
@@ -72,23 +88,20 @@ router.post('/login', (req, res) => {
         return res.status(401).json({ error: 'Invalid password' });
     }
 
-    // Constant-time comparison to prevent timing attacks
-    const passwordMatch = password.length === adminPassword.length &&
-        crypto.timingSafeEqual(Buffer.from(password), Buffer.from(adminPassword));
-
-    if (passwordMatch) {
-        const expiresAt = Date.now() + 4 * 60 * 60 * 1000; // 4 hours
-        const token = generateSessionToken(expiresAt);
-        res.json({
-            success: true,
-            token,
-            expiresAt
-        });
-    } else {
+    try {
+        if (safeCompare(password, adminPassword)) {
+            const expiresAt = Date.now() + 4 * 60 * 60 * 1000; // 4 hours
+            const token = generateSessionToken(expiresAt);
+            return res.json({ success: true, token, expiresAt });
+        }
         console.warn(`Failed admin login from ${clientIp} at ${new Date().toISOString()}`);
-        res.status(401).json({ error: 'Invalid password' });
+        return res.status(401).json({ error: 'Invalid password' });
+    } catch (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ error: 'Login failed' });
     }
 });
 
+// Export both the router and verifySessionToken
+router.verifySessionToken = verifySessionToken;
 module.exports = router;
-module.exports.verifySessionToken = verifySessionToken;

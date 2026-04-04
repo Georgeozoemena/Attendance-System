@@ -1,4 +1,5 @@
-const { verifySessionToken } = require('../routes/auth');
+const authRouter = require('../routes/auth');
+const { verifySessionToken } = authRouter;
 
 const adminPassword = process.env.ADMIN_PASSWORD;
 
