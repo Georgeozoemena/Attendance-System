@@ -97,8 +97,6 @@ router.post('/query', auth, async (req, res) => {
         provider = 'openai';
         apiKey = openAIKey;
     }
-        apiKey = openAIKey;
-    }
 
     // Local insights fallback if no valid provider found
     if (!provider) {
