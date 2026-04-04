@@ -20,17 +20,25 @@ const app = express();
 // Restrict CORS to known origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:4000'];
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4000'];
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, same-origin)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    // Allow any vercel.app subdomain and render.com (for internal calls)
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin) ||
+      /\.onrender\.com$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
-app.use(bodyParser.json({ limit: '10kb' })); // Prevent large payload attacks
+app.use(bodyParser.json({ limit: '10kb' }));
 
 // Logger middleware
 app.use((req, res, next) => {
