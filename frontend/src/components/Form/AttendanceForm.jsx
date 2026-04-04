@@ -196,7 +196,7 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
         const resp = await fetch(`${API_BASE}/api/lookup/smart?name=${encodeURIComponent(name)}`);
         if (resp.ok) {
           const matches = await resp.json();
-          if (matches.length > 0 && matches[0].score < 1.0) {
+          if (matches.length > 0) {
             setSmartSuggestion(matches[0].profile);
           } else {
             setSmartSuggestion(null);

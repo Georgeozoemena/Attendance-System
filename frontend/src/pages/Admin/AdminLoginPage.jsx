@@ -23,11 +23,9 @@ export default function AdminLoginPage() {
             const data = await resp.json();
 
             if (resp.ok && data.success) {
-                // Store the raw password — this is what the auth middleware compares against
-                localStorage.setItem('adminKey', password);
-                // Set a 4-hour expiry
-                const expiryTime = Date.now() + (4 * 60 * 60 * 1000);
-                localStorage.setItem('adminTokenExpiry', expiryTime.toString());
+                // Store the signed session token (not the raw password)
+                localStorage.setItem('adminKey', data.token);
+                localStorage.setItem('adminTokenExpiry', data.expiresAt.toString());
                 navigate('/admin');
             } else {
                 setError(data.error || 'Invalid password. Please try again.');

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 
 // Simple in-memory rate limiter for login attempts
 const loginAttempts = new Map();
@@ -9,20 +10,47 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 function isRateLimited(ip) {
     const now = Date.now();
     const attempts = loginAttempts.get(ip) || { count: 0, resetTime: now + WINDOW_MS };
-    
+
     if (now > attempts.resetTime) {
-        // Reset window expired
         loginAttempts.set(ip, { count: 1, resetTime: now + WINDOW_MS });
         return false;
     }
-    
+
     if (attempts.count >= MAX_ATTEMPTS) {
         return true;
     }
-    
+
     attempts.count++;
     loginAttempts.set(ip, attempts);
     return false;
+}
+
+/**
+ * Generate a cryptographically signed session token.
+ * Format: <expiry>.<hmac>
+ */
+function generateSessionToken(expiry) {
+    const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
+    const payload = String(expiry);
+    const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    return `${payload}.${hmac}`;
+}
+
+/**
+ * Verify a session token. Returns expiry timestamp or null if invalid.
+ */
+function verifySessionToken(token) {
+    try {
+        const [payload, hmac] = token.split('.');
+        if (!payload || !hmac) return null;
+        const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
+        const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+        // Constant-time comparison to prevent timing attacks
+        if (!crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(expected))) return null;
+        return parseInt(payload, 10);
+    } catch {
+        return null;
+    }
 }
 
 router.post('/login', (req, res) => {
@@ -30,9 +58,8 @@ router.post('/login', (req, res) => {
     const adminPassword = process.env.ADMIN_PASSWORD;
     const clientIp = req.ip || req.connection.remoteAddress;
 
-    // Check rate limiting
     if (isRateLimited(clientIp)) {
-        return res.status(429).json({ 
+        return res.status(429).json({
             error: 'Too many login attempts. Please try again in 15 minutes.'
         });
     }
@@ -41,24 +68,27 @@ router.post('/login', (req, res) => {
         return res.status(500).json({ error: 'Server misconfigured: ADMIN_PASSWORD not set' });
     }
 
-    // Validate password format - require minimum length
-    if (!password || typeof password !== 'string' || password.length < 8) {
-        // Don't reveal if password is wrong format to prevent enumeration
+    if (!password || typeof password !== 'string') {
         return res.status(401).json({ error: 'Invalid password' });
     }
 
-    if (password === adminPassword) {
-        // Generate a simple session token instead of returning the password
-        // In production, use JWT or session-based auth
-        const sessionToken = Buffer.from(`${adminPassword}:${Date.now()}`).toString('base64');
-        res.json({ 
-            success: true, 
-            token: sessionToken,
-            expiresIn: 3600 // 1 hour
+    // Constant-time comparison to prevent timing attacks
+    const passwordMatch = password.length === adminPassword.length &&
+        crypto.timingSafeEqual(Buffer.from(password), Buffer.from(adminPassword));
+
+    if (passwordMatch) {
+        const expiresAt = Date.now() + 4 * 60 * 60 * 1000; // 4 hours
+        const token = generateSessionToken(expiresAt);
+        res.json({
+            success: true,
+            token,
+            expiresAt
         });
     } else {
+        console.warn(`Failed admin login from ${clientIp} at ${new Date().toISOString()}`);
         res.status(401).json({ error: 'Invalid password' });
     }
 });
 
 module.exports = router;
+module.exports.verifySessionToken = verifySessionToken;

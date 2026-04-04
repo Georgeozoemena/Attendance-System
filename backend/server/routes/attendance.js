@@ -123,7 +123,7 @@ router.get('/attendance', auth, async (req, res) => {
       address: r.address,
       birthday: r.birthday,
       occupation: r.occupation,
-      firstTimer: r.firstTimer === 1 ? 'Yes' : 'No',
+      firstTimer: r.firstTimer === 1 || r.firstTimer === true ? 'Yes' : 'No',
       gender: r.gender,
       nationality: r.nationality,
       department: r.department,
@@ -174,23 +174,30 @@ router.get('/members', auth, async (req, res) => {
 router.get('/absentees', auth, async (req, res) => {
   try {
     const { dbAll } = require('../database');
-    const allRecords = await dbAll('SELECT * FROM attendance_local ORDER BY createdAt DESC');
+    // Use event dates from the events table for reliability instead of inferring from attendance timestamps
+    const recentEvents = await dbAll(`
+      SELECT DISTINCT date FROM events WHERE status = 'active' ORDER BY date DESC LIMIT 2
+    `);
 
-    // Identify the latest two "service" dates
-    const dates = [...new Set(allRecords.map(r => r.createdAt.split('T')[0]))].slice(0, 2);
+    if (recentEvents.length < 2) return res.json([]);
 
-    if (dates.length < 1) return res.json([]);
+    const today = recentEvents[0].date;
+    const lastSession = recentEvents[1].date;
 
-    const today = dates[0];
-    const lastSession = dates[1];
+    const todayAttendees = new Set(
+      (await dbAll('SELECT uniqueCode FROM attendance_local WHERE substr(createdAt,1,10) = ?', [today]))
+        .map(r => r.uniqueCode).filter(Boolean)
+    );
 
-    const todayAttendees = new Set(allRecords.filter(r => r.createdAt.startsWith(today)).map(r => r.uniqueCode));
-    const lastSessionAttendees = allRecords.filter(r => r.createdAt.startsWith(lastSession));
+    const lastSessionAttendees = await dbAll(
+      'SELECT * FROM attendance_local WHERE substr(createdAt,1,10) = ?', [lastSession]
+    );
 
     const absentees = [];
     const processedCodes = new Set();
 
     lastSessionAttendees.forEach(record => {
+      if (!record.uniqueCode) return;
       if (!todayAttendees.has(record.uniqueCode) && !processedCodes.has(record.uniqueCode)) {
         absentees.push({
           uniqueCode: record.uniqueCode,
@@ -217,23 +224,36 @@ router.get('/lookup/smart', async (req, res) => {
 
   try {
     const { dbAll } = require('../database');
-    // Fetch unique members (most recent record for each phone)
-    const records = await dbAll(`
-      SELECT * FROM attendance_local 
-      GROUP BY phone 
-      ORDER BY createdAt DESC 
-      LIMIT 1000
-    `);
+
+    let records;
+    if (phone) {
+      // Exact phone match — no need for fuzzy
+      records = await dbAll(`
+        SELECT * FROM attendance_local WHERE phone = ? ORDER BY createdAt DESC LIMIT 1
+      `, [phone]);
+    } else {
+      // Pre-filter by first letter to reduce in-memory work
+      const firstChar = name.charAt(0).toLowerCase();
+      records = await dbAll(`
+        SELECT * FROM attendance_local
+        WHERE LOWER(SUBSTR(name, 1, 1)) = ?
+        GROUP BY phone
+        ORDER BY createdAt DESC
+        LIMIT 200
+      `, [firstChar]);
+    }
 
     let matches = [];
     records.forEach(r => {
       let score = 0;
-      if (phone && r.phone === phone) score = 1.0;
-      else if (name && r.name) {
+      if (phone && r.phone === phone) {
+        score = 1.0;
+      } else if (name && r.name) {
         score = calculateSimilarity(name, r.name);
       }
 
-      if (score > 0.8) {
+      // Only suggest if similarity is high but not a perfect match (perfect = already filled)
+      if (score >= 0.8 && score < 1.0) {
         matches.push({
           score,
           profile: {
@@ -252,7 +272,6 @@ router.get('/lookup/smart', async (req, res) => {
       }
     });
 
-    // Return best match
     matches.sort((a, b) => b.score - a.score);
     res.json(matches.slice(0, 3));
   } catch (err) {
@@ -287,6 +306,10 @@ router.get('/members/:code', auth, async (req, res) => {
   try {
     const { dbAll } = require('../database');
     const history = await dbAll('SELECT * FROM attendance_local WHERE uniqueCode = ? ORDER BY createdAt DESC', [req.params.code]);
+
+    if (!history || history.length === 0) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
 
     const streak = await getAttendanceStreak(req.params.code);
     const member = {

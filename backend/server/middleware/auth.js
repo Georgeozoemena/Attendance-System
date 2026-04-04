@@ -1,25 +1,31 @@
+const { verifySessionToken } = require('../routes/auth');
+
 const adminPassword = process.env.ADMIN_PASSWORD;
 
 function authMiddleware(req, res, next) {
-    // Validate that admin password is configured in production
     if (!adminPassword) {
         console.error('FATAL: ADMIN_PASSWORD environment variable is not set');
         return res.status(500).json({ error: 'Server misconfigured: ADMIN_PASSWORD not set' });
     }
 
-    const authHeader = req.headers['authorization'] || req.headers['x-admin-key'] || req.query.key;
+    const token = req.headers['authorization'] || req.headers['x-admin-key'] || req.query.key;
 
-    if (!authHeader) {
+    if (!token) {
         return res.status(401).json({ error: 'Unauthorized: Admin access required' });
     }
 
-    if (authHeader === adminPassword) {
-        next();
-    } else {
-        // Log failed authentication attempts
-        console.warn(`Failed admin auth attempt from ${req.ip} at ${new Date().toISOString()}`);
-        res.status(401).json({ error: 'Unauthorized: Invalid admin key' });
+    // Verify signed session token
+    const expiry = verifySessionToken(token);
+    if (expiry === null) {
+        console.warn(`Invalid admin token from ${req.ip} at ${new Date().toISOString()}`);
+        return res.status(401).json({ error: 'Unauthorized: Invalid or malformed token' });
     }
+
+    if (Date.now() > expiry) {
+        return res.status(401).json({ error: 'Unauthorized: Session expired, please log in again' });
+    }
+
+    next();
 }
 
 module.exports = authMiddleware;

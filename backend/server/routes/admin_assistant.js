@@ -93,11 +93,10 @@ router.post('/query', auth, async (req, res) => {
     if (anthropicKey && anthropicKey.startsWith('sk-ant')) {
         provider = 'anthropic';
         apiKey = anthropicKey;
-    } else if (openAIKey && openAIKey.startsWith('sk-ant')) {
-        provider = 'anthropic';
-        apiKey = openAIKey;
     } else if (openAIKey && openAIKey.startsWith('sk-')) {
         provider = 'openai';
+        apiKey = openAIKey;
+    }
         apiKey = openAIKey;
     }
 
@@ -128,8 +127,9 @@ router.post('/query', auth, async (req, res) => {
                      "\n\n*Add a valid AI API key for more nuanced demographic suggestions!*";
         } else if (lowerQuery.includes('high') || lowerQuery.includes('best') || lowerQuery.includes('most') || lowerQuery.includes('attendance')) {
             const currentYear = new Date().getFullYear();
-            const yearFilter = lowerQuery.includes('year') ? `WHERE e.date LIKE '${currentYear}%'` : '';
+            const yearFilter = lowerQuery.includes('year') ? `WHERE e.date LIKE ?` : '';
             const yearLabel = lowerQuery.includes('year') ? ` in ${currentYear}` : '';
+            const yearParams = lowerQuery.includes('year') ? [`${currentYear}%`] : [];
 
             const highAttendance = await dbGet(`
                 SELECT e.name, e.date, COUNT(a.id) as turnout
@@ -139,7 +139,7 @@ router.post('/query', auth, async (req, res) => {
                 GROUP BY e.id
                 ORDER BY turnout DESC
                 LIMIT 1
-            `);
+            `, yearParams);
             
             if (highAttendance) {
                 answer = `### 🏆 Record Attendance${yearLabel}\nYour highest attended event was **${highAttendance.name}** on **${highAttendance.date}** with **${highAttendance.turnout}** attendees.`;

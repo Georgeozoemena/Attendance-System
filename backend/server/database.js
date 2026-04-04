@@ -98,6 +98,11 @@ db.serialize(() => {
         if (err) console.warn('Could not create unique index (possible duplicates exist)', err.message);
     });
 
+    // Index on uniqueCode for fast member lookups
+    db.run(`CREATE INDEX IF NOT EXISTS idx_attendance_uniqueCode ON attendance_local (uniqueCode)`, [], (err) => {
+        if (err) console.warn('Could not create uniqueCode index', err.message);
+    });
+
     // Handle schema updates for existing installations
     db.run(`ALTER TABLE events ADD COLUMN start_time TEXT`, [], (err) => {
         // Ignore error if column already exists
