@@ -91,7 +91,7 @@ const MembersPage = () => {
                                         <td className="code-cell">#{member.uniqueCode}</td>
                                         <td className="name-cell">{member.name}</td>
                                         <td>
-                                            <span className={`badge ${member.category}`}>
+                                            <span className={`badge-pill ${member.category}`}>
                                                 {member.category}
                                             </span>
                                         </td>

@@ -40,10 +40,13 @@ const AbsenteesPage = () => {
                 </button>
             </header>
 
-            <div className="stats-grid">
-                <div className="stat-card danger">
-                    <span className="stat-label">Total Absentees</span>
-                    <span className="stat-value">{absentees.length}</span>
+            <div className="admin-card-grid" style={{ gridTemplateColumns: '1fr', maxWidth: '200px', marginBottom: '20px' }}>
+                <div className="stat-card">
+                    <div className="stat-card-top">
+                        <span className="stat-label">Total Absentees</span>
+                    </div>
+                    <div className="stat-value" style={{ color: 'var(--red)' }}>{absentees.length}</div>
+                    <div className="stat-sub">Missed last session</div>
                 </div>
             </div>
 

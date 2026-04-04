@@ -232,16 +232,8 @@ const EventsPage = () => {
                                     className="input"
                                     value={newEvent.start_time}
                                     onChange={e => setNewEvent({ ...newEvent, start_time: e.target.value })}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        backgroundColor: 'var(--bg-main)'
-                                    }}
                                 />
-                                <small style={{ color: 'var(--text-light)', marginTop: '4px', display: 'block' }}>
+                                <small className="helper" style={{ marginTop: '4px', display: 'block' }}>
                                     Leave blank to start immediately on creation.
                                 </small>
                             </div>
