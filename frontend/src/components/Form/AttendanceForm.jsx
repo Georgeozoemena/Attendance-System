@@ -225,54 +225,50 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
     if (!form.phone || form.phone.length < 5 || prefilledFrom === 'remote' || prefilledFrom === 'smart lookup') return;
     setLookingUp(true);
     try {
-      // Check if already checked in today for this event
-      const found = await lookupAttendance({ phone: form.phone, eventId });
-      const today = new Date().toISOString().split('T')[0];
-      const alreadyMarked = Array.isArray(found) && found.find(r => r.eventId === eventId);
+      // Look up globally by phone to get their full profile history
+      const global = await lookupAttendance({ phone: form.phone });
+      if (!Array.isArray(global) || global.length === 0) return;
+
+      // Check if already checked in for this specific event
+      const alreadyMarked = global.some(r => r.eventId === eventId);
       if (alreadyMarked) {
         setToast({ message: 'You have already marked attendance for this event!', type: 'info' });
         return;
       }
 
-      // Try to prefill from any past record
-      const global = await lookupAttendance({ phone: form.phone });
-      if (Array.isArray(global) && global.length > 0) {
-        const user = global[0];
-        const lastVisit = new Date(user.createdAt).toLocaleDateString();
-        const isWorker = user.type === 'worker';
-        const welcomeMsg = isWorker 
-          ? `Welcome back, ${user.name}! Ready for service today? ⚡`
-          : `Great to see you again, ${user.name}! (Last visit: ${lastVisit})`;
+      const user = global[0];
+      const lastVisit = new Date(user.createdAt).toLocaleDateString();
+      const isWorker = user.type === 'worker';
+      const welcomeMsg = isWorker
+        ? `Welcome back, ${user.name}! Ready for service today? ⚡`
+        : `Great to see you again, ${user.name}! (Last visit: ${lastVisit})`;
 
-        setToast({
-          message: (
-            <div className="one-tap-checkin">
-              <span style={{ display: 'block', marginBottom: '8px' }}>
-                {welcomeMsg}
-              </span>
-              <button
-                onClick={() => handleOneTapSubmit(user)}
-                className="btn-station primary"
-                style={{ width: '100%', padding: '10px', fontSize: '14px' }}
-                disabled={loading}
-              >
-                {loading ? 'Checking in...' : 'One-Tap Check-In'}
-              </button>
-              <button
-                onClick={() => {
-                  setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
-                  setPrefilledFrom('manual');
-                  setToast(null);
-                }}
-                style={{ background: 'none', border: 'none', color: '#fff', textDecoration: 'underline', fontSize: '12px', marginTop: '8px', cursor: 'pointer', width: '100%' }}
-              >
-                Not you? or edit details
-              </button>
-            </div>
-          ),
-          type: 'info'
-        });
-      }
+      setToast({
+        message: (
+          <div className="one-tap-checkin">
+            <span style={{ display: 'block', marginBottom: '8px' }}>{welcomeMsg}</span>
+            <button
+              onClick={() => handleOneTapSubmit(user)}
+              className="btn-station primary"
+              style={{ width: '100%', padding: '10px', fontSize: '14px' }}
+              disabled={loading}
+            >
+              {loading ? 'Checking in...' : 'One-Tap Check-In'}
+            </button>
+            <button
+              onClick={() => {
+                setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
+                setPrefilledFrom('phone lookup');
+                setToast(null);
+              }}
+              style={{ background: 'none', border: 'none', color: '#fff', textDecoration: 'underline', fontSize: '12px', marginTop: '8px', cursor: 'pointer', width: '100%' }}
+            >
+              Not you? or edit details
+            </button>
+          </div>
+        ),
+        type: 'info'
+      });
     } catch {
       // silent fail
     } finally {
@@ -315,13 +311,22 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
     if (!form.email || prefilledFrom === 'phone' || prefilledFrom === 'smart lookup') return;
     setLookingUp(true);
     try {
-      const found = await lookupAttendance({ email: form.email, eventId });
-      if (Array.isArray(found) && found.length > 0) {
-        setForm(s => ({ ...s, ...found[0], type: s.type, firstTimer: !!found[0].firstTimer }));
-        saveUser(found[0].phone, found[0]);
+      // Look up globally by email (no eventId) to get their profile
+      const global = await lookupAttendance({ email: form.email });
+      if (Array.isArray(global) && global.length > 0) {
+        // Check if already checked in for this specific event
+        const alreadyMarked = global.some(r => r.eventId === eventId);
+        if (alreadyMarked) {
+          setToast({ message: 'You have already marked attendance for this event!', type: 'info' });
+          return;
+        }
+        // Prefill from most recent record
+        const user = global[0];
+        setForm(s => ({ ...s, ...user, type: s.type, firstTimer: false }));
+        saveUser(user.phone, user);
         setPrefilledFrom('email lookup');
         setErrors({});
-        setToast({ message: 'Form auto-filled from your previous record.', type: 'info' });
+        setToast({ message: `Welcome back, ${user.name}! Form auto-filled.`, type: 'info' });
       }
     } catch {
       // silent fail

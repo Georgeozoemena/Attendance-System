@@ -235,10 +235,13 @@ router.get('/lookup/smart', async (req, res) => {
       // Pre-filter by first letter to reduce in-memory work
       const firstChar = name.charAt(0).toLowerCase();
       records = await dbAll(`
-        SELECT * FROM attendance_local
-        WHERE LOWER(SUBSTR(name, 1, 1)) = ?
-        GROUP BY phone
-        ORDER BY createdAt DESC
+        SELECT a.* FROM attendance_local a
+        INNER JOIN (
+          SELECT phone, MAX(createdAt) as maxDate
+          FROM attendance_local
+          WHERE LOWER(SUBSTR(name, 1, 1)) = ?
+          GROUP BY phone
+        ) latest ON a.phone = latest.phone AND a.createdAt = latest.maxDate
         LIMIT 200
       `, [firstChar]);
     }
@@ -349,12 +352,11 @@ router.get('/lookup', async (req, res) => {
 
   try {
     const { dbAll } = require('../database');
-    let query = 'SELECT * FROM attendance_local WHERE ';
     const params = [];
     const conditions = [];
 
     if (email) {
-      conditions.push('email = ?');
+      conditions.push('LOWER(email) = LOWER(?)');
       params.push(email);
     }
     if (phone) {
@@ -366,8 +368,8 @@ router.get('/lookup', async (req, res) => {
       params.push(eventId);
     }
 
-    query += conditions.join(' AND ') + ' ORDER BY createdAt DESC LIMIT 1';
-
+    // Return multiple records so caller can check for duplicate eventId
+    const query = `SELECT * FROM attendance_local WHERE ${conditions.join(' AND ')} ORDER BY createdAt DESC LIMIT 10`;
     const rows = await dbAll(query, params);
     res.json(rows);
   } catch (err) {
