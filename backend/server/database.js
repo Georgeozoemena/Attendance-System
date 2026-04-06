@@ -6,7 +6,7 @@ const fs = require('fs');
 const dbPath = path.join(__dirname, '..', 'data', 'attendance.db');
 
 // Ensure data directory exists
-const dataDir = path.dirname(dbPath);
+const dataDir = path.dirname(dbPath);   
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -51,19 +51,19 @@ if (useTurso) {
     });
 }
 
-// Initialize tables
-db.serialize(() => {
+// Initialize tables — run sequentially using the promisified dbRun
+async function initializeDatabase() {
     const initSql = [
         `CREATE TABLE IF NOT EXISTS message_templates (id TEXT PRIMARY KEY, name TEXT NOT NULL, message TEXT NOT NULL, channel TEXT DEFAULT 'both', created_at TEXT)`,
         `CREATE TABLE IF NOT EXISTS scheduled_messages (id TEXT PRIMARY KEY, message TEXT NOT NULL, channel TEXT NOT NULL, recipient_count INTEGER, scheduled_time TEXT NOT NULL, status TEXT DEFAULT 'pending', sent_count INTEGER DEFAULT 0, failed_count INTEGER DEFAULT 0, created_at TEXT)`,
         `CREATE TABLE IF NOT EXISTS message_history (id TEXT PRIMARY KEY, message TEXT NOT NULL, channel TEXT NOT NULL, recipient_count INTEGER, status TEXT, created_at TEXT)`,
         `CREATE TABLE IF NOT EXISTS events (
-            id TEXT PRIMARY KEY, 
-            name TEXT NOT NULL, 
-            type TEXT NOT NULL, 
-            date TEXT NOT NULL, 
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            date TEXT NOT NULL,
             start_time TEXT,
-            status TEXT DEFAULT 'active', 
+            status TEXT DEFAULT 'active',
             expiry_duration INTEGER DEFAULT 0,
             is_frozen INTEGER DEFAULT 0,
             freeze_started_at TEXT,
@@ -86,34 +86,47 @@ db.serialize(() => {
             type TEXT DEFAULT 'member',
             uniqueCode TEXT,
             createdAt TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS testimonies (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT,
+            category TEXT DEFAULT 'general',
+            content TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            eventRef TEXT,
+            createdAt TEXT NOT NULL,
+            reviewedAt TEXT,
+            reviewedBy TEXT
         )`
     ];
 
-    initSql.forEach(sql => {
-        db.run(sql);
-    });
+    for (const sql of initSql) {
+        try { await dbRun(sql); } catch (e) { console.warn('Init SQL warning:', e.message); }
+    }
 
-    // Add unique index to prevent duplicates at DB level
-    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_unique ON attendance_local (phone, eventId)`, [], (err) => {
-        if (err) console.warn('Could not create unique index (possible duplicates exist)', err.message);
-    });
+    // Indexes
+    const indexes = [
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_unique ON attendance_local (phone, eventId)`,
+        `CREATE INDEX IF NOT EXISTS idx_attendance_uniqueCode ON attendance_local (uniqueCode)`
+    ];
+    for (const sql of indexes) {
+        try { await dbRun(sql); } catch (e) { /* already exists */ }
+    }
 
-    // Index on uniqueCode for fast member lookups
-    db.run(`CREATE INDEX IF NOT EXISTS idx_attendance_uniqueCode ON attendance_local (uniqueCode)`, [], (err) => {
-        if (err) console.warn('Could not create uniqueCode index', err.message);
-    });
-
-    // Handle schema updates for existing installations
-    db.run(`ALTER TABLE events ADD COLUMN start_time TEXT`, [], (err) => {
-        // Ignore error if column already exists
-    });
-
-    db.run(`ALTER TABLE attendance_local ADD COLUMN birthday TEXT`, [], (err) => {
-        // Ignore error if column already exists
-    });
+    // Schema migrations — ignore errors if column already exists
+    const migrations = [
+        `ALTER TABLE events ADD COLUMN start_time TEXT`,
+        `ALTER TABLE attendance_local ADD COLUMN birthday TEXT`
+    ];
+    for (const sql of migrations) {
+        try { await dbRun(sql); } catch (e) { /* column already exists */ }
+    }
 
     console.log('Database initialized');
-});
+}
+
+initializeDatabase().catch(err => console.error('Database initialization failed:', err));
 
 // Promisify db methods
 const dbAll = (sql, params = []) => {

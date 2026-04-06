@@ -1,12 +1,9 @@
-import React from 'react';
 import { useOutletContext, useLocation } from 'react-router-dom';
 import LiveTable from '../../components/Admin/LiveTable.jsx';
 import AnalyticsDashboard from '../../components/Admin/AnalyticsDashboard.jsx';
 import AttendanceCategoryView from '../../components/Admin/AttendanceCategoryView.jsx';
 import AdminQRGenerator from '../../components/Admin/AdminQRGenerator.jsx';
 import MessagesPage from './MessagesPage.jsx';
-import PredictiveAnalytics from '../../components/Admin/PredictiveAnalytics.jsx';
-import AdminAssistantPage from './AdminAssistant.jsx';
 
 export function AdminLive() {
     const { items } = useOutletContext();
@@ -21,7 +18,6 @@ export function AdminLive() {
     return (
         <div className="admin-live-container animate-fade-in">
             <div className="admin-card-grid">
-                {/* Total Registered */}
                 <div className="stat-card">
                     <div className="stat-card-top">
                         <span className="stat-label">Total Registered</span>
@@ -36,7 +32,6 @@ export function AdminLive() {
                     <div className="stat-sub">Across all events</div>
                 </div>
 
-                {/* Today's Check-ins */}
                 <div className="stat-card highlighted">
                     <div className="stat-card-top">
                         <span className="stat-label">Today's Check-ins</span>
@@ -50,7 +45,6 @@ export function AdminLive() {
                     <div className="stat-sub">{todayFirstTimers} new first-timers today</div>
                 </div>
 
-                {/* First Timers */}
                 <div className="stat-card">
                     <div className="stat-card-top">
                         <span className="stat-label">First Timers</span>
@@ -64,7 +58,6 @@ export function AdminLive() {
                     <div className="stat-sub">{totalEntries > 0 ? ((firstTimers / totalEntries) * 100).toFixed(0) : 0}% of total</div>
                 </div>
 
-                {/* Departments */}
                 <div className="stat-card">
                     <div className="stat-card-top">
                         <span className="stat-label">Departments</span>
@@ -81,7 +74,6 @@ export function AdminLive() {
                 </div>
             </div>
 
-            {/* Live Table */}
             <div className="data-table-card">
                 <div className="table-header">
                     <div className="table-header-left">
@@ -101,10 +93,6 @@ export function AdminAnalytics() {
     return <AnalyticsDashboard attendanceData={items} />;
 }
 
-export function AdminPredictive() {
-    return <PredictiveAnalytics />;
-}
-
 export function AdminCategories() {
     const { items } = useOutletContext();
     return <AttendanceCategoryView data={items} />;
@@ -115,41 +103,26 @@ export function AdminQR() {
     const location = useLocation();
     const params = new URLSearchParams(location.search);
     const type = params.get('type') || 'member';
-
     return (
         <div className="animate-fade-in">
-            <AdminQRGenerator
-                eventId={eventFilter || 'default-event'}
-                initialCategory={type}
-            />
+            <AdminQRGenerator eventId={eventFilter || 'default-event'} initialCategory={type} />
         </div>
     );
 }
 
 import EventsPage from './EventsPage.jsx';
-export function AdminEvents() {
-    return <EventsPage />;
-}
+export function AdminEvents() { return <EventsPage />; }
 
-export function AdminMessages() {
-    return <MessagesPage />;
-}
+export function AdminMessages() { return <MessagesPage />; }
 
 import MembersPage from './MembersPage.jsx';
-export function AdminMembers() {
-    return <MembersPage />;
-}
+export function AdminMembers() { return <MembersPage />; }
 
 import AbsenteesPage from './AbsenteesPage.jsx';
-export function AdminAbsentees() {
-    return <AbsenteesPage />;
-}
+export function AdminAbsentees() { return <AbsenteesPage />; }
 
 import SettingsPage from './SettingsPage.jsx';
-export function AdminSettings() {
-    return <SettingsPage />;
-}
+export function AdminSettings() { return <SettingsPage />; }
 
-export function AdminAssistant() {
-    return <AdminAssistantPage />;
-}
+import TestimoniesPage from './TestimoniesPage.jsx';
+export function AdminTestimonies() { return <TestimoniesPage />; }

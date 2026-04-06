@@ -57,12 +57,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                         </svg>
                         Analytics
                     </NavLink>
-                    <NavLink to="/admin/predictive" className={linkClass} onClick={handleNavClick}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                        </svg>
-                        Predictive
-                    </NavLink>
                     <NavLink to="/admin/events" className={linkClass} onClick={handleNavClick}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
@@ -96,6 +90,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <line x1="12" y1="2" x2="12" y2="12" />
                         </svg>
                         Absentees
+                    </NavLink>
+                    <NavLink to="/admin/testimonies" className={linkClass} onClick={handleNavClick}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l4-4-4-4h12a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Testimonies
                     </NavLink>
                 </div>
 

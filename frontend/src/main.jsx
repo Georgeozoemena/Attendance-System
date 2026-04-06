@@ -7,12 +7,14 @@ import QRPage from './pages/QRPage.jsx';
 import AttendanceFormPage from './pages/AttendanceFormPage.jsx';
 import ThankYouPage from './pages/ThankYouPage.jsx';
 import QuickCheckInPage from './pages/QuickCheckInPage.jsx';
+import TestimonyPage from './pages/TestimonyPage.jsx';
 import AdminLayout from './pages/Admin/AdminLayout.jsx';
 import AdminLoginPage from './pages/Admin/AdminLoginPage.jsx';
 import ProtectedRoute from './components/Admin/ProtectedRoute.jsx';
 import {
-  AdminLive, AdminAnalytics, AdminPredictive, AdminQR,
-  AdminMembers, AdminAbsentees, AdminEvents, AdminSettings, AdminAssistant
+  AdminLive, AdminAnalytics, AdminQR,
+  AdminMembers, AdminAbsentees, AdminEvents,
+  AdminSettings, AdminMessages, AdminTestimonies
 } from './pages/Admin/AdminWrapper.jsx';
 
 createRoot(document.getElementById('root')).render(
@@ -25,6 +27,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="check-in" element={<QuickCheckInPage />} />
           <Route path="attend" element={<AttendanceFormPage />} />
           <Route path="thank-you" element={<ThankYouPage />} />
+          <Route path="testimony" element={<TestimonyPage />} />
 
           <Route path="admin/login" element={<AdminLoginPage />} />
 
@@ -33,12 +36,12 @@ createRoot(document.getElementById('root')).render(
               <Route index element={<Navigate to="live" replace />} />
               <Route path="live" element={<AdminLive />} />
               <Route path="analysis" element={<AdminAnalytics />} />
-              <Route path="predictive" element={<AdminPredictive />} />
               <Route path="events" element={<AdminEvents />} />
               <Route path="qrcode" element={<AdminQR />} />
               <Route path="members" element={<AdminMembers />} />
               <Route path="absentees" element={<AdminAbsentees />} />
-              <Route path="assistant" element={<AdminAssistant />} />
+              <Route path="messages" element={<AdminMessages />} />
+              <Route path="testimonies" element={<AdminTestimonies />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Route>

@@ -7,8 +7,7 @@ const authRouter = require('./routes/auth');
 const messagesRouter = require('./routes/messages');
 const eventsRouter = require('./routes/events');
 const analyticsRouter = require('./routes/analytics');
-const insightsRouter = require('./routes/insights');
-const assistantRouter = require('./routes/admin_assistant');
+const testimoniesRouter = require('./routes/testimonies');
 
 // Warn about optional environment variables
 if (!process.env.APPS_SCRIPT_WEBHOOK) {
@@ -52,8 +51,7 @@ app.use('/api', attendanceRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/analytics', analyticsRouter);
-app.use('/api/analytics', insightsRouter); // Mount insights under /api/analytics
-app.use('/api/admin/assistant', assistantRouter);
+app.use('/api/testimonies', testimoniesRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
