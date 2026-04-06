@@ -16,15 +16,22 @@ export default function TestimonyPage() {
   const eventRef = searchParams.get('ref') || null;
 
   const [form, setForm] = useState({ name: '', phone: '', category: 'general', content: '' });
+  const [anonymous, setAnonymous] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   function validate() {
     const errs = {};
-    if (!form.name || form.name.trim().length < 2) errs.name = 'Please enter your name';
-    if (!form.content || form.content.trim().length < 20) errs.content = 'Please share at least a few sentences (min 20 characters)';
-    if (form.content.trim().length > 2000) errs.content = 'Please keep it under 2000 characters';
+    if (!anonymous && (!form.name || form.name.trim().length < 2)) {
+      errs.name = 'Please enter your name, or submit anonymously';
+    }
+    if (!form.content || form.content.trim().length < 20) {
+      errs.content = 'Please share at least a few sentences (min 20 characters)';
+    }
+    if (form.content.trim().length > 2000) {
+      errs.content = 'Please keep it under 2000 characters';
+    }
     return errs;
   }
 
@@ -39,7 +46,7 @@ export default function TestimonyPage() {
       const res = await fetch(`${API_BASE}/api/testimonies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, eventRef })
+        body: JSON.stringify({ ...form, anonymous, eventRef })
       });
       if (res.ok) {
         setSubmitted(true);
@@ -82,19 +89,50 @@ export default function TestimonyPage() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
+
+          {/* Anonymous toggle */}
           <div className="form-field">
-            <label>Your Name <span className="req">*</span></label>
-            <input
-              className={`form-input ${errors.name ? 'error' : ''}`}
-              placeholder="e.g. George Ozoemena"
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            />
-            {errors.name && <span className="error-text">{errors.name}</span>}
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}
+            >
+              <div
+                onClick={() => { setAnonymous(a => !a); setErrors(e => ({ ...e, name: '' })); }}
+                style={{
+                  width: '40px', height: '22px', borderRadius: '11px', flexShrink: 0,
+                  background: anonymous ? 'var(--dc-blue)' : 'var(--surface-3)',
+                  border: '1px solid var(--border-2)',
+                  position: 'relative', transition: 'background 0.2s', cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: '3px',
+                  left: anonymous ? '20px' : '3px',
+                  width: '14px', height: '14px', borderRadius: '50%',
+                  background: '#fff', transition: 'left 0.2s'
+                }} />
+              </div>
+              <span style={{ fontSize: '13px', color: 'var(--text-2)' }}>
+                Submit anonymously
+              </span>
+            </label>
           </div>
 
+          {/* Name — hidden when anonymous */}
+          {!anonymous && (
+            <div className="form-field">
+              <label>Your Name <span className="req">*</span></label>
+              <input
+                className={`form-input ${errors.name ? 'error' : ''}`}
+                placeholder="e.g. George Ozoemena"
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              />
+              {errors.name && <span className="error-text">{errors.name}</span>}
+            </div>
+          )}
+
           <div className="form-field">
-            <label>Phone Number <span className="helper" style={{ fontWeight: 400 }}>(optional)</span></label>
+            <label>Phone Number <span style={{ fontWeight: 400, color: 'var(--text-3)', fontSize: '11px' }}>(optional)</span></label>
             <input
               className="form-input"
               type="tel"
@@ -132,17 +170,13 @@ export default function TestimonyPage() {
               style={{ resize: 'vertical', minHeight: '120px' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-              {errors.content
-                ? <span className="error-text">{errors.content}</span>
-                : <span />}
+              {errors.content ? <span className="error-text">{errors.content}</span> : <span />}
               <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{form.content.length}/2000</span>
             </div>
           </div>
 
           {errors.submit && (
-            <div className="login-error" style={{ marginBottom: '16px' }}>
-              {errors.submit}
-            </div>
+            <div className="login-error" style={{ marginBottom: '16px' }}>{errors.submit}</div>
           )}
 
           <button type="submit" className="af-submit-btn" disabled={loading}>

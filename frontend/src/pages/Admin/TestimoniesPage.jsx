@@ -3,11 +3,93 @@ import { API_BASE } from '../../services/api';
 
 const STATUS_TABS = ['pending', 'approved', 'rejected'];
 
+function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab }) {
+    if (!t) return null;
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="modal"
+                style={{ maxWidth: '560px', width: '100%' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-1)' }}>
+                                {t.name}
+                            </span>
+                            <span className="badge-pill" style={{
+                                background: 'var(--dc-blue-lt)', color: 'var(--dc-blue)',
+                                border: '1px solid var(--dc-blue-border)', textTransform: 'capitalize'
+                            }}>
+                                {t.category}
+                            </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
+                            {t.phone && <span style={{ marginRight: '12px' }}>{t.phone}</span>}
+                            {new Date(t.createdAt).toLocaleString()}
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div style={{
+                    background: 'var(--surface-2)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)', padding: '16px', marginBottom: '20px',
+                    maxHeight: '320px', overflowY: 'auto'
+                }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-1)', lineHeight: '1.7', whiteSpace: 'pre-wrap', margin: 0 }}>
+                        {t.content}
+                    </p>
+                </div>
+
+                {/* Actions */}
+                <div className="modal-actions">
+                    {activeTab === 'pending' && (
+                        <>
+                            <button className="modal-btn primary" onClick={() => onAction(t.id, 'approved')}>
+                                Approve
+                            </button>
+                            <button className="modal-btn primary danger" onClick={() => onAction(t.id, 'rejected')}>
+                                Reject
+                            </button>
+                        </>
+                    )}
+                    {activeTab === 'approved' && (
+                        <button className="modal-btn primary danger" onClick={() => onAction(t.id, 'rejected')}>
+                            Revoke Approval
+                        </button>
+                    )}
+                    {activeTab === 'rejected' && (
+                        <button className="modal-btn primary" onClick={() => onAction(t.id, 'approved')}>
+                            Approve
+                        </button>
+                    )}
+                    <button className="modal-btn" style={{ borderColor: 'var(--red-border)', color: 'var(--red)' }} onClick={() => onDelete(t.id)}>
+                        Delete
+                    </button>
+                    <button className="modal-btn" onClick={onClose}>Close</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function TestimoniesPage() {
     const [testimonies, setTestimonies] = useState([]);
     const [activeTab, setActiveTab] = useState('pending');
     const [loading, setLoading] = useState(true);
-    const [expanded, setExpanded] = useState(null);
+    const [selected, setSelected] = useState(null);
 
     useEffect(() => {
         fetchTestimonies(activeTab);
@@ -38,7 +120,7 @@ export default function TestimoniesPage() {
             });
             if (res.ok) {
                 setTestimonies(prev => prev.filter(t => t.id !== id));
-                setExpanded(null);
+                setSelected(null);
             }
         } catch (err) {
             console.error('Action failed', err);
@@ -54,6 +136,7 @@ export default function TestimoniesPage() {
                 headers: { 'x-admin-key': adminKey }
             });
             setTestimonies(prev => prev.filter(t => t.id !== id));
+            setSelected(null);
         } catch (err) {
             console.error('Delete failed', err);
         }
@@ -90,6 +173,15 @@ export default function TestimoniesPage() {
                         style={{ textTransform: 'capitalize' }}
                     >
                         {tab}
+                        {tab === activeTab && testimonies.length > 0 && (
+                            <span style={{
+                                marginLeft: '6px', background: 'var(--amber-lt)', color: 'var(--amber)',
+                                border: '1px solid var(--amber-border)', borderRadius: '100px',
+                                fontSize: '10px', fontWeight: '700', padding: '1px 6px'
+                            }}>
+                                {testimonies.length}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -97,76 +189,59 @@ export default function TestimoniesPage() {
             {loading ? (
                 <div className="loading-state">Loading...</div>
             ) : testimonies.length === 0 ? (
-                <div className="empty-state">
-                    No {activeTab} testimonies yet.
-                </div>
+                <div className="empty-state">No {activeTab} testimonies yet.</div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {testimonies.map(t => (
-                        <div key={t.id} className="data-table-card" style={{ padding: '18px 20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+                        <div
+                            key={t.id}
+                            className="data-table-card"
+                            style={{ padding: '16px 20px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                            onClick={() => setSelected(t)}
+                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-2)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                                        <span style={{ fontWeight: '600', color: 'var(--text-1)', fontSize: '14px' }}>{t.name}</span>
-                                        <span className="badge-pill" style={{ background: 'var(--dc-blue-lt)', color: 'var(--dc-blue)', border: '1px solid var(--dc-blue-border)', textTransform: 'capitalize' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: '600', color: 'var(--text-1)', fontSize: '13px' }}>
+                                            {t.name}
+                                        </span>
+                                        <span className="badge-pill" style={{
+                                            background: 'var(--dc-blue-lt)', color: 'var(--dc-blue)',
+                                            border: '1px solid var(--dc-blue-border)', textTransform: 'capitalize', fontSize: '10px'
+                                        }}>
                                             {t.category}
                                         </span>
-                                        {t.phone && <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{t.phone}</span>}
                                         <span style={{ fontSize: '11px', color: 'var(--text-4)', marginLeft: 'auto' }}>
                                             {new Date(t.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
                                     <p style={{
-                                        fontSize: '13px',
-                                        color: 'var(--text-2)',
-                                        lineHeight: '1.6',
-                                        overflow: 'hidden',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: expanded === t.id ? 'unset' : 3,
-                                        WebkitBoxOrient: 'vertical',
-                                        whiteSpace: 'pre-wrap'
+                                        fontSize: '13px', color: 'var(--text-3)', lineHeight: '1.5',
+                                        overflow: 'hidden', display: '-webkit-box',
+                                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                                        margin: 0
                                     }}>
                                         {t.content}
                                     </p>
-                                    {t.content.length > 200 && (
-                                        <button
-                                            onClick={() => setExpanded(expanded === t.id ? null : t.id)}
-                                            style={{ background: 'none', border: 'none', color: 'var(--dc-blue)', fontSize: '12px', padding: '4px 0', cursor: 'pointer' }}
-                                        >
-                                            {expanded === t.id ? 'Show less' : 'Read more'}
-                                        </button>
-                                    )}
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-                                    {activeTab === 'pending' && (
-                                        <>
-                                            <button className="action-btn primary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => handleAction(t.id, 'approved')}>
-                                                Approve
-                                            </button>
-                                            <button className="small-btn danger" onClick={() => handleAction(t.id, 'rejected')}>
-                                                Reject
-                                            </button>
-                                        </>
-                                    )}
-                                    {activeTab === 'approved' && (
-                                        <button className="small-btn danger" onClick={() => handleAction(t.id, 'rejected')}>
-                                            Revoke
-                                        </button>
-                                    )}
-                                    {activeTab === 'rejected' && (
-                                        <button className="action-btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => handleAction(t.id, 'approved')}>
-                                            Approve
-                                        </button>
-                                    )}
-                                    <button className="small-btn danger" onClick={() => handleDelete(t.id)}>
-                                        Delete
-                                    </button>
-                                </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-4)', flexShrink: 0, marginTop: '2px' }}>
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
+
+            <TestimonyModal
+                testimony={selected}
+                activeTab={activeTab}
+                onClose={() => setSelected(null)}
+                onAction={handleAction}
+                onDelete={handleDelete}
+            />
         </div>
     );
 }

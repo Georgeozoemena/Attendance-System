@@ -31,10 +31,12 @@ router.post('/', async (req, res) => {
         return res.status(429).json({ error: 'Too many submissions. Please try again later.' });
     }
 
-    const { name, phone, category, content, eventRef } = req.body;
+    const { name, phone, category, content, eventRef, anonymous } = req.body;
 
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-        return res.status(400).json({ error: 'Name is required' });
+    // Name is optional if anonymous
+    const submitterName = anonymous ? 'Anonymous' : (name?.trim() || '');
+    if (!anonymous && submitterName.length < 2) {
+        return res.status(400).json({ error: 'Please enter your name, or choose to submit anonymously' });
     }
     if (!content || typeof content !== 'string' || content.trim().length < 20) {
         return res.status(400).json({ error: 'Testimony must be at least 20 characters' });
@@ -50,7 +52,7 @@ router.post('/', async (req, res) => {
         await dbRun(
             `INSERT INTO testimonies (id, name, phone, category, content, status, eventRef, createdAt)
              VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-            [id, name.trim(), phone?.trim() || null, safeCategory, content.trim(), eventRef || null, new Date().toISOString()]
+            [id, submitterName, phone?.trim() || null, safeCategory, content.trim(), eventRef || null, new Date().toISOString()]
         );
         incrementRateLimit(ip);
         res.status(201).json({ success: true, id });
