@@ -11,13 +11,17 @@ function isRateLimited(ip) {
     const now = Date.now();
     const entry = RATE_LIMIT_MAP.get(ip) || { count: 0, resetTime: now + 60 * 60 * 1000 };
     if (now > entry.resetTime) {
-        RATE_LIMIT_MAP.set(ip, { count: 1, resetTime: now + 60 * 60 * 1000 });
+        RATE_LIMIT_MAP.set(ip, { count: 0, resetTime: now + 60 * 60 * 1000 });
         return false;
     }
-    if (entry.count >= 3) return true; // max 3 submissions per hour per IP
+    return entry.count >= 3;
+}
+
+function incrementRateLimit(ip) {
+    const now = Date.now();
+    const entry = RATE_LIMIT_MAP.get(ip) || { count: 0, resetTime: now + 60 * 60 * 1000 };
     entry.count++;
     RATE_LIMIT_MAP.set(ip, entry);
-    return false;
 }
 
 // POST /api/testimonies — public, no auth
@@ -48,6 +52,7 @@ router.post('/', async (req, res) => {
              VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
             [id, name.trim(), phone?.trim() || null, safeCategory, content.trim(), eventRef || null, new Date().toISOString()]
         );
+        incrementRateLimit(ip);
         res.status(201).json({ success: true, id });
     } catch (err) {
         console.error('Testimony submit failed', err);

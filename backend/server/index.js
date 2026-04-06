@@ -53,13 +53,16 @@ app.use('/api/events', eventsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/testimonies', testimoniesRouter);
 
+const { dbReady } = require('./database');
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Backend listening on http://localhost:${PORT}`);
 
-  if (!process.env.ADMIN_PASSWORD) {
-    console.warn('Warning: ADMIN_PASSWORD is not set. Admin routes will be unprotected (INSECURE)!');
-  }
+dbReady.then(() => {
+  app.listen(PORT, () => {
+    console.log(`Backend listening on http://localhost:${PORT}`);
+    if (!process.env.ADMIN_PASSWORD) {
+      console.warn('Warning: ADMIN_PASSWORD is not set. Admin routes will be unprotected (INSECURE)!');
+    }
+  });
 });
 
 // health-check root route
