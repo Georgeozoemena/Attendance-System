@@ -45,7 +45,7 @@ const AbsenteesPage = () => {
                     <div className="stat-card-top">
                         <span className="stat-label">Total Absentees</span>
                     </div>
-                    <div className="stat-value" style={{ color: 'var(--red)' }}>{absentees.length}</div>
+                    <div className="stat-value">{absentees.length}</div>
                     <div className="stat-sub">Missed last session</div>
                 </div>
             </div>

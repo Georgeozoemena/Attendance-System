@@ -71,6 +71,58 @@ async function initializeDatabase() {
             id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT, category TEXT DEFAULT 'general',
             content TEXT NOT NULL, status TEXT DEFAULT 'pending', eventRef TEXT,
             createdAt TEXT NOT NULL, reviewedAt TEXT, reviewedBy TEXT
+        )`,
+        `CREATE TABLE IF NOT EXISTS members (
+            id TEXT PRIMARY KEY,
+            uniqueCode TEXT UNIQUE,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            birthday TEXT,
+            occupation TEXT,
+            gender TEXT,
+            nationality TEXT,
+            department TEXT,
+            type TEXT DEFAULT 'member',
+            status TEXT DEFAULT 'active',
+            followUpStatus TEXT DEFAULT 'none',
+            joinDate TEXT,
+            notes TEXT,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS giving (
+            id TEXT PRIMARY KEY,
+            memberId TEXT,
+            memberName TEXT NOT NULL,
+            phone TEXT,
+            amount REAL NOT NULL,
+            type TEXT DEFAULT 'tithe',
+            eventId TEXT,
+            notes TEXT,
+            recordedBy TEXT,
+            createdAt TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS prayer_requests (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT,
+            category TEXT DEFAULT 'general',
+            request TEXT NOT NULL,
+            anonymous INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            eventRef TEXT,
+            createdAt TEXT NOT NULL,
+            prayedAt TEXT
+        )`,
+        `CREATE TABLE IF NOT EXISTS departments (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            leaderId TEXT,
+            leaderName TEXT,
+            createdAt TEXT NOT NULL
         )`
     ];
 
