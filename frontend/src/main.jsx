@@ -15,7 +15,7 @@ import ProtectedRoute from './components/Admin/ProtectedRoute.jsx';
 import {
   AdminLive, AdminAnalytics, AdminQR,
   AdminMembers, AdminAbsentees, AdminEvents,
-  AdminSettings, AdminTestimonies, AdminGiving,
+  AdminSettings, AdminTestimonies,
   AdminPrayer, AdminDepartments
 } from './pages/Admin/AdminWrapper.jsx';
 
@@ -45,7 +45,6 @@ createRoot(document.getElementById('root')).render(
               <Route path="members" element={<AdminMembers />} />
               <Route path="departments" element={<AdminDepartments />} />
               <Route path="absentees" element={<AdminAbsentees />} />
-              <Route path="giving" element={<AdminGiving />} />
               <Route path="prayer" element={<AdminPrayer />} />
               <Route path="testimonies" element={<AdminTestimonies />} />
               <Route path="settings" element={<AdminSettings />} />

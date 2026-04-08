@@ -114,9 +114,6 @@ export function AdminAbsentees() { return <AbsenteesPage />; }
 import TestimoniesPage from './TestimoniesPage.jsx';
 export function AdminTestimonies() { return <TestimoniesPage />; }
 
-import GivingPage from './GivingPage.jsx';
-export function AdminGiving() { return <GivingPage />; }
-
 import PrayerPage from './PrayerPage.jsx';
 export function AdminPrayer() { return <PrayerPage />; }
 

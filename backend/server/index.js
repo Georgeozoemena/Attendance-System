@@ -9,7 +9,6 @@ const eventsRouter = require('./routes/events');
 const analyticsRouter = require('./routes/analytics');
 const testimoniesRouter = require('./routes/testimonies');
 const membersRouter = require('./routes/members');
-const givingRouter = require('./routes/giving');
 const prayerRouter = require('./routes/prayer');
 const departmentsRouter = require('./routes/departments');
 
@@ -41,7 +40,7 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(bodyParser.json({ limit: '10kb' }));
+app.use(bodyParser.json({ limit: '2mb' }));
 
 // Logger middleware
 app.use((req, res, next) => {
@@ -57,7 +56,6 @@ app.use('/api/events', eventsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/testimonies', testimoniesRouter);
 app.use('/api/members', membersRouter);
-app.use('/api/giving', givingRouter);
 app.use('/api/prayer', prayerRouter);
 app.use('/api/departments', departmentsRouter);
 

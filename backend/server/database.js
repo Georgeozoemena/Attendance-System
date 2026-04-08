@@ -140,7 +140,11 @@ async function initializeDatabase() {
 
     const migrations = [
         `ALTER TABLE events ADD COLUMN start_time TEXT`,
-        `ALTER TABLE attendance_local ADD COLUMN birthday TEXT`
+        `ALTER TABLE attendance_local ADD COLUMN birthday TEXT`,
+        `ALTER TABLE departments ADD COLUMN leaderPhone TEXT`,
+        `ALTER TABLE departments ADD COLUMN meetingDay TEXT`,
+        `ALTER TABLE departments ADD COLUMN meetingTime TEXT`,
+        `ALTER TABLE departments ADD COLUMN leaderPhoto TEXT`
     ];
     for (const sql of migrations) {
         try { await dbRun(sql); } catch (e) { /* column already exists */ }

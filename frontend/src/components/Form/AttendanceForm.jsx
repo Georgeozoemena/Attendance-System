@@ -31,6 +31,15 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
 
   const [allEvents, setAllEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(eventId);
+  const [departments, setDepartments] = useState([]);
+
+  // Fetch departments for worker dropdown
+  useEffect(() => {
+    fetch(`${API_BASE}/api/departments/list`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => { if (Array.isArray(data) && data.length > 0) setDepartments(data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isAdmin) {
@@ -680,12 +689,25 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
               <label>
                 Department / Unit <span className="req">*</span>
               </label>
-              <input
-                className={`form-input ${errors.department ? 'error' : ''}`}
-                placeholder="e.g. Media, Choir, Ushering"
-                value={form.department}
-                onChange={e => field('department', e.target.value)}
-              />
+              {departments.length > 0 ? (
+                <select
+                  className={`form-input select ${errors.department ? 'error' : ''}`}
+                  value={form.department}
+                  onChange={e => field('department', e.target.value)}
+                >
+                  <option value="">Select your department...</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.name}>{d.name}{d.leaderName ? ` — ${d.leaderName}` : ''}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className={`form-input ${errors.department ? 'error' : ''}`}
+                  placeholder="e.g. Media, Choir, Ushering"
+                  value={form.department}
+                  onChange={e => field('department', e.target.value)}
+                />
+              )}
               {errors.department && <p className="field-error">{errors.department}</p>}
             </div>
           )}
