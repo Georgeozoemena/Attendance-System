@@ -35,210 +35,394 @@ export default function AdminLoginPage() {
     };
 
     return (
-        <div style={{
-            display: 'flex', minHeight: '100vh', background: '#ffffff',
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-        }}>
-            {/* ── Left: Form panel ── */}
-            <div style={{
-                flex: '0 0 480px', display: 'flex', flexDirection: 'column',
-                justifyContent: 'space-between', padding: '48px 56px',
-                background: '#ffffff'
-            }}>
-                {/* Brand */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                        width: 36, height: 36, borderRadius: 8,
-                        background: '#0047AB', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                            <path d="M2 17l10 5 10-5" />
-                            <path d="M2 12l10 5 10-5" />
-                        </svg>
-                    </div>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: '#0f0f0f', letterSpacing: '-0.02em' }}>
-                        Dominion City
-                    </span>
-                </div>
-
-                {/* Form */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 360 }}>
-                    <h1 style={{
-                        fontSize: 40, fontWeight: 800, color: '#0f0f0f',
-                        lineHeight: 1.15, letterSpacing: '-0.04em', marginBottom: 10
-                    }}>
-                        Welcome<br />Back,
-                    </h1>
-                    <p style={{ fontSize: 15, color: '#888', marginBottom: 40, fontWeight: 400 }}>
-                        Sign in to your admin dashboard
-                    </p>
-
-                    <form onSubmit={handleLogin}>
-                        {/* Password field */}
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 8 }}>
-                                Password
-                            </label>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    type={showPw ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    placeholder="Enter your password"
-                                    autoFocus
-                                    required
-                                    style={{
-                                        width: '100%', padding: '13px 44px 13px 16px',
-                                        border: error ? '1.5px solid #ef4444' : '1.5px solid #e0e0e0',
-                                        borderRadius: 10, fontSize: 14, outline: 'none',
-                                        background: '#fafafa', color: '#0f0f0f',
-                                        transition: 'border-color 0.15s',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={e => { if (!error) e.target.style.borderColor = '#0047AB'; }}
-                                    onBlur={e => { if (!error) e.target.style.borderColor = '#e0e0e0'; }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPw(s => !s)}
-                                    style={{
-                                        position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                                        background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: 0
-                                    }}
-                                >
-                                    {showPw ? (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                                    ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                    )}
-                                </button>
-                            </div>
-                            {error && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: '#ef4444' }}>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    {error}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Submit */}
-                        <button
-                            type="submit"
-                            disabled={loading || !password}
-                            style={{
-                                width: '100%', padding: '14px', borderRadius: 10,
-                                background: loading || !password ? '#ccc' : '#0047AB',
-                                color: '#fff', border: 'none', fontSize: 15, fontWeight: 700,
-                                cursor: loading || !password ? 'not-allowed' : 'pointer',
-                                transition: 'background 0.15s, transform 0.1s',
-                                letterSpacing: '-0.01em'
-                            }}
-                            onMouseEnter={e => { if (!loading && password) e.currentTarget.style.background = '#003380'; }}
-                            onMouseLeave={e => { if (!loading && password) e.currentTarget.style.background = '#0047AB'; }}
-                        >
-                            {loading ? 'Signing in...' : 'Sign In'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Footer */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <button
-                        onClick={() => navigate('/')}
-                        style={{ background: 'none', border: 'none', fontSize: 13, color: '#aaa', cursor: 'pointer', padding: 0 }}
-                    >
-                        ← Back to check-in
-                    </button>
-                    <span style={{ fontSize: 12, color: '#ccc' }}>Olive Parish</span>
-                </div>
-            </div>
-
-            {/* ── Right: Image panel ── */}
-            <div style={{
-                flex: 1, position: 'relative', overflow: 'hidden',
-                background: '#0a0a0a', minHeight: '100vh'
-            }}>
-                {/* Background image */}
-                <img
-                    src="/W2C.jpg"
-                    alt="Dominion City"
-                    style={{
-                        position: 'absolute', inset: 0, width: '100%', height: '100%',
-                        objectFit: 'cover', objectPosition: 'center',
-                        opacity: 0.75
-                    }}
-                />
-
-                {/* Gradient overlay */}
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.1) 100%)'
-                }} />
-
-                {/* Blue accent overlay */}
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(135deg, rgba(0,71,171,0.3) 0%, transparent 60%)'
-                }} />
-
-                {/* Content */}
-                <div style={{
-                    position: 'absolute', bottom: 56, left: 48, right: 48
-                }}>
-                    <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        background: 'rgba(0,71,171,0.8)', backdropFilter: 'blur(8px)',
-                        borderRadius: 100, padding: '6px 14px', marginBottom: 20
-                    }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#5b9cf6', animation: 'pulse 2s infinite' }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>
-                            LIVE ATTENDANCE SYSTEM
-                        </span>
-                    </div>
-
-                    <h2 style={{
-                        fontSize: 36, fontWeight: 800, color: '#ffffff',
-                        lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 12
-                    }}>
-                        Raising Leaders,<br />Building Community
-                    </h2>
-                    <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, maxWidth: 400 }}>
-                        Track attendance, manage your congregation, and grow your church — all in one place.
-                    </p>
-
-                    {/* Stats row */}
-                    <div style={{ display: 'flex', gap: 32, marginTop: 32 }}>
-                        {[
-                            { label: 'Members Tracked', value: '∞' },
-                            { label: 'Events Managed', value: '∞' },
-                            { label: 'Always Live', value: '24/7' },
-                        ].map(s => (
-                            <div key={s.label}>
-                                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>{s.value}</div>
-                                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontWeight: 500 }}>{s.label}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Responsive: hide image panel on small screens */}
+        <>
             <style>{`
-                @media (max-width: 768px) {
-                    div[style*="flex: 0 0 480px"] {
-                        flex: 1 !important;
-                        padding: 40px 28px !important;
-                    }
-                    div[style*="flex: 1"][style*="minHeight: 100vh"] {
-                        display: none !important;
-                    }
+                .login-root {
+                    display: flex;
+                    min-height: 100vh;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
                 }
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.4; }
+
+                /* ── Left panel ── */
+                .login-left {
+                    flex: 0 0 460px;
+                    background: #0a0a0a;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    padding: 44px 52px;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .login-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .login-brand-mark {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: #0047AB;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                }
+
+                .login-brand-name {
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #ffffff;
+                    letter-spacing: -0.02em;
+                }
+
+                .login-form-area {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    max-width: 340px;
+                }
+
+                .login-heading {
+                    font-size: 38px;
+                    font-weight: 800;
+                    color: #ffffff;
+                    line-height: 1.15;
+                    letter-spacing: -0.04em;
+                    margin-bottom: 10px;
+                }
+
+                .login-sub {
+                    font-size: 14px;
+                    color: #666;
+                    margin-bottom: 40px;
+                    font-weight: 400;
+                    line-height: 1.5;
+                }
+
+                .login-field-label {
+                    display: block;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #888;
+                    margin-bottom: 8px;
+                    letter-spacing: 0.02em;
+                    text-transform: uppercase;
+                }
+
+                .login-input-wrap {
+                    position: relative;
+                    margin-bottom: 20px;
+                }
+
+                .login-input {
+                    width: 100%;
+                    padding: 13px 44px 13px 16px;
+                    background: #1a1a1a;
+                    border: 1.5px solid #2a2a2a;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    color: #ffffff;
+                    outline: none;
+                    transition: border-color 0.15s;
+                    box-sizing: border-box;
+                    font-family: inherit;
+                }
+
+                .login-input::placeholder { color: #444; }
+
+                .login-input:focus {
+                    border-color: #0047AB;
+                    background: #1f1f1f;
+                }
+
+                .login-input.has-error { border-color: #ef4444; }
+
+                .login-pw-toggle {
+                    position: absolute;
+                    right: 14px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: #555;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .login-pw-toggle:hover { color: #888; }
+
+                .login-error-msg {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 12px;
+                    color: #ef4444;
+                    margin-top: -12px;
+                    margin-bottom: 16px;
+                }
+
+                .login-submit {
+                    width: 100%;
+                    padding: 14px;
+                    border-radius: 10px;
+                    background: #0047AB;
+                    color: #fff;
+                    border: none;
+                    font-size: 15px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: background 0.15s;
+                    font-family: inherit;
+                    letter-spacing: -0.01em;
+                    margin-top: 4px;
+                }
+
+                .login-submit:hover:not(:disabled) { background: #003380; }
+                .login-submit:disabled { background: #1f1f1f; color: #444; cursor: not-allowed; }
+
+                .login-footer {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+
+                .login-back-btn {
+                    background: none;
+                    border: none;
+                    font-size: 13px;
+                    color: #444;
+                    cursor: pointer;
+                    padding: 0;
+                    font-family: inherit;
+                    transition: color 0.12s;
+                }
+
+                .login-back-btn:hover { color: #888; }
+
+                /* ── Right panel ── */
+                .login-right {
+                    flex: 1;
+                    position: relative;
+                    overflow: hidden;
+                    background: #0a0a0a;
+                }
+
+                .login-right-img {
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    object-position: center;
+                    opacity: 0.6;
+                }
+
+                .login-right-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(
+                        to top,
+                        rgba(0,0,0,0.92) 0%,
+                        rgba(0,0,0,0.4) 45%,
+                        rgba(0,0,0,0.15) 100%
+                    );
+                }
+
+                .login-right-content {
+                    position: absolute;
+                    bottom: 52px;
+                    left: 48px;
+                    right: 48px;
+                }
+
+                .login-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: rgba(0, 71, 171, 0.75);
+                    backdrop-filter: blur(10px);
+                    border-radius: 100px;
+                    padding: 6px 14px;
+                    margin-bottom: 22px;
+                }
+
+                .login-badge-dot {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                    background: #5b9cf6;
+                    animation: loginPulse 2s ease-in-out infinite;
+                }
+
+                .login-badge-text {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #fff;
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                }
+
+                .login-right-heading {
+                    font-size: 34px;
+                    font-weight: 800;
+                    color: #ffffff;
+                    line-height: 1.2;
+                    letter-spacing: -0.03em;
+                    margin-bottom: 12px;
+                }
+
+                .login-right-desc {
+                    font-size: 14px;
+                    color: rgba(255,255,255,0.6);
+                    line-height: 1.65;
+                    max-width: 380px;
+                }
+
+                .login-stats {
+                    display: flex;
+                    gap: 36px;
+                    margin-top: 32px;
+                }
+
+                .login-stat-value {
+                    font-size: 22px;
+                    font-weight: 800;
+                    color: #fff;
+                    letter-spacing: -0.03em;
+                }
+
+                .login-stat-label {
+                    font-size: 11px;
+                    color: rgba(255,255,255,0.45);
+                    margin-top: 3px;
+                    font-weight: 500;
+                }
+
+                @keyframes loginPulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.4; transform: scale(0.8); }
+                }
+
+                /* ── Responsive ── */
+                @media (max-width: 900px) {
+                    .login-left { flex: 0 0 400px; padding: 36px 40px; }
+                    .login-heading { font-size: 32px; }
+                }
+
+                @media (max-width: 700px) {
+                    .login-root { flex-direction: column; }
+                    .login-left {
+                        flex: none;
+                        width: 100%;
+                        min-height: 100vh;
+                        padding: 40px 28px;
+                    }
+                    .login-right { display: none; }
+                    .login-form-area { max-width: 100%; }
+                    .login-heading { font-size: 34px; }
                 }
             `}</style>
-        </div>
+
+            <div className="login-root">
+                {/* ── Left ── */}
+                <div className="login-left">
+                    <div className="login-brand">
+                        <div className="login-brand-mark">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
+                        </div>
+                        <span className="login-brand-name">Dominion City</span>
+                    </div>
+
+                    <div className="login-form-area">
+                        <h1 className="login-heading">Welcome<br />Back,</h1>
+                        <p className="login-sub">Sign in to your admin dashboard to continue.</p>
+
+                        <form onSubmit={handleLogin}>
+                            <div>
+                                <label className="login-field-label" htmlFor="pw">Password</label>
+                                <div className="login-input-wrap">
+                                    <input
+                                        id="pw"
+                                        type={showPw ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => { setPassword(e.target.value); setError(''); }}
+                                        placeholder="Enter your password"
+                                        autoFocus
+                                        required
+                                        className={`login-input${error ? ' has-error' : ''}`}
+                                    />
+                                    <button type="button" className="login-pw-toggle" onClick={() => setShowPw(s => !s)} tabIndex={-1}>
+                                        {showPw ? (
+                                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                        ) : (
+                                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        )}
+                                    </button>
+                                </div>
+                                {error && (
+                                    <div className="login-error-msg">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        {error}
+                                    </div>
+                                )}
+                            </div>
+
+                            <button type="submit" disabled={loading || !password} className="login-submit">
+                                {loading ? 'Signing in...' : 'Sign In'}
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="login-footer">
+                        <button className="login-back-btn" onClick={() => navigate('/')}>← Back to check-in</button>
+                        <span style={{ fontSize: 12, color: '#333' }}>Olive Parish</span>
+                    </div>
+                </div>
+
+                {/* ── Right ── */}
+                <div className="login-right">
+                    <img src="/W2C.jpg" alt="" className="login-right-img" />
+                    <div className="login-right-overlay" />
+
+                    <div className="login-right-content">
+                        <div className="login-badge">
+                            <span className="login-badge-dot" />
+                            <span className="login-badge-text">Church Management System</span>
+                        </div>
+
+                        <h2 className="login-right-heading">
+                            Raising Leaders,<br />Building Community
+                        </h2>
+                        <p className="login-right-desc">
+                            Attendance, members, departments, prayer requests, testimonies — everything your church needs, in one place.
+                        </p>
+
+                        <div className="login-stats">
+                            {[
+                                { value: 'Live', label: 'Attendance Tracking' },
+                                { value: 'Full', label: 'Member Profiles' },
+                                { value: '24/7', label: 'Always Available' },
+                            ].map(s => (
+                                <div key={s.label}>
+                                    <div className="login-stat-value">{s.value}</div>
+                                    <div className="login-stat-label">{s.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }
