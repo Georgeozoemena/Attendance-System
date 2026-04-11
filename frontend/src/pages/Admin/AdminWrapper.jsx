@@ -49,7 +49,9 @@ export function AdminLive() {
                         </span>
                     </div>
                     <div className="stat-value">{firstTimers}</div>
-                    <div className="stat-sub">{totalEntries > 0 ? ((firstTimers / totalEntries) * 100).toFixed(0) : 0}% of total</div>
+                    <div className="stat-sub">
+                        {firstTimers === 0 ? 'None today' : totalEntries > 0 ? `${((firstTimers / totalEntries) * 100).toFixed(0)}% of total attendance` : 'New visitors'}
+                    </div>
                 </div>
                 <div className="stat-card">
                     <div className="stat-card-top">
