@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const [showQRDropdown, setShowQRDropdown] = useState(false);
+
+    const [churchName, setChurchName] = useState(() => localStorage.getItem('churchName') || 'Dominion City');
+    const [parish, setParish] = useState(() => localStorage.getItem('parish') || 'Olive Parish');
+    const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('logoUrl') || '/logo.png');
+
+    // Re-read org settings when they change from SettingsPage
+    useEffect(() => {
+        function handleOrgChange() {
+            setChurchName(localStorage.getItem('churchName') || 'Dominion City');
+            setParish(localStorage.getItem('parish') || 'Olive Parish');
+            setLogoUrl(localStorage.getItem('logoUrl') || '/logo.png');
+        }
+        window.addEventListener('orgSettingsChanged', handleOrgChange);
+        return () => window.removeEventListener('orgSettingsChanged', handleOrgChange);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('adminKey');
@@ -23,10 +38,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     return (
         <aside className={`admin-sidebar ${isOpen ? 'mobile-open' : ''}`}>
             <div className="sidebar-brand">
-                <img src="/logo.png" alt="Dominion City" className="sidebar-logo" />
+                <img src={logoUrl} alt={churchName} className="sidebar-logo" />
                 <div className="brand-text">
-                    <h2>Dominion City</h2>
-                    <span>Olive Parish</span>
+                    <h2>{churchName}</h2>
+                    <span>{parish}</span>
                 </div>
                 <button className="sidebar-close-btn" onClick={onClose}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -1,24 +1,53 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext.jsx';
+
+// Dispatch a custom event so Sidebar/Navbar react immediately without a page reload
+function broadcastOrgChange() {
+    window.dispatchEvent(new Event('orgSettingsChanged'));
+}
 
 export default function SettingsPage() {
     const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
+    const logoRef = useRef();
 
     const [churchName, setChurchName] = useState(() => localStorage.getItem('churchName') || 'Dominion City');
     const [parish, setParish] = useState(() => localStorage.getItem('parish') || 'Olive Parish');
+    const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('logoUrl') || '');
     const [editing, setEditing] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [logoError, setLogoError] = useState('');
+
+    function handleLogoChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 300000) { setLogoError('Logo must be under 300KB'); return; }
+        setLogoError('');
+        const reader = new FileReader();
+        reader.onload = ev => setLogoUrl(ev.target.result);
+        reader.readAsDataURL(file);
+    }
 
     function handleSaveOrg(e) {
         e.preventDefault();
         localStorage.setItem('churchName', churchName);
         localStorage.setItem('parish', parish);
+        if (logoUrl) localStorage.setItem('logoUrl', logoUrl);
+        else localStorage.removeItem('logoUrl');
+        broadcastOrgChange();
         setEditing(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
     }
+
+    function handleRemoveLogo() {
+        setLogoUrl('');
+        localStorage.removeItem('logoUrl');
+        broadcastOrgChange();
+    }
+
+    const displayLogo = logoUrl || '/logo.png';
 
     return (
         <div className="settings-page animate-fade-in">
@@ -52,11 +81,29 @@ export default function SettingsPage() {
             <section className="settings-section">
                 <div className="settings-section-header">
                     <h2>Organization</h2>
-                    <p>Your church details shown across the system.</p>
+                    <p>Your church details and logo shown across the system.</p>
                 </div>
                 <div className="settings-card">
                     {editing ? (
-                        <form onSubmit={handleSaveOrg} style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <form onSubmit={handleSaveOrg} style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {/* Logo upload */}
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-2)', display: 'block', marginBottom: '10px' }}>Church Logo</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <img src={displayLogo} alt="logo" style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'contain', background: 'var(--surface-3)', padding: 4 }} />
+                                    <div>
+                                        <button type="button" className="action-btn" onClick={() => logoRef.current.click()} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                            {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                        </button>
+                                        {logoUrl && (
+                                            <button type="button" className="small-btn" onClick={handleRemoveLogo} style={{ marginLeft: '8px', fontSize: '11px' }}>Remove</button>
+                                        )}
+                                        <div style={{ fontSize: '11px', color: 'var(--text-4)', marginTop: '4px' }}>PNG, JPG · Max 300KB</div>
+                                        {logoError && <div style={{ fontSize: '11px', color: 'var(--red)', marginTop: '2px' }}>{logoError}</div>}
+                                        <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoChange} />
+                                    </div>
+                                </div>
+                            </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label>Church Name</label>
                                 <input className="input" value={churchName} onChange={e => setChurchName(e.target.value)} required />
@@ -66,12 +113,18 @@ export default function SettingsPage() {
                                 <input className="input" value={parish} onChange={e => setParish(e.target.value)} />
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button type="submit" className="modal-btn primary" style={{ padding: '7px 16px' }}>Save</button>
+                                <button type="submit" className="modal-btn primary" style={{ padding: '7px 16px' }}>Save Changes</button>
                                 <button type="button" className="modal-btn" style={{ padding: '7px 16px' }} onClick={() => setEditing(false)}>Cancel</button>
                             </div>
                         </form>
                     ) : (
                         <>
+                            <div className="settings-row border-bottom">
+                                <div className="settings-row-info">
+                                    <span className="settings-row-label">Logo</span>
+                                </div>
+                                <img src={displayLogo} alt="logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain', background: 'var(--surface-3)', padding: 3 }} />
+                            </div>
                             <div className="settings-row border-bottom">
                                 <div className="settings-row-info">
                                     <span className="settings-row-label">Church Name</span>
@@ -86,7 +139,7 @@ export default function SettingsPage() {
                             </div>
                             <div className="settings-row">
                                 <div className="settings-row-info">
-                                    <span className="settings-row-label">System</span>
+                                    <span className="settings-row-label">Edit Details</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     {saved && <span style={{ fontSize: '12px', color: 'var(--green)' }}>Saved ✓</span>}
@@ -121,9 +174,7 @@ export default function SettingsPage() {
                             localStorage.removeItem('adminKey');
                             localStorage.removeItem('adminTokenExpiry');
                             navigate('/admin/login');
-                        }}>
-                            Sign Out
-                        </button>
+                        }}>Sign Out</button>
                     </div>
                 </div>
             </section>
