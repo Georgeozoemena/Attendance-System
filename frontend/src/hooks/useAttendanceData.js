@@ -10,26 +10,45 @@ export function useAttendanceData() {
     const [currentEventId, setCurrentEventId] = useState('');
     const activeFilterRef = useRef('');
 
-    // SSE subscription for live updates
+    // SSE subscription for live updates with reconnect backoff
     useEffect(() => {
-        const es = connectToSSE(`${API_BASE}/api/admin/stream`);
-        es.onmessage = (ev) => {
-            try {
-                const data = JSON.parse(ev.data);
-                const currentFilter = activeFilterRef.current;
-                
-                // Only add to stream if we're viewing All Events OR the stream matches our specific filtered event
-                if (!currentFilter || currentFilter === data.eventId) {
-                    setItems((s) => [data, ...s]);
+        let es;
+        let retryTimeout;
+        let retryDelay = 2000;
+        let active = true;
+
+        function connect() {
+            if (!active) return;
+            es = connectToSSE(`${API_BASE}/api/admin/stream`);
+            es.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    const currentFilter = activeFilterRef.current;
+                    if (!currentFilter || currentFilter === data.eventId) {
+                        setItems((s) => [data, ...s]);
+                    }
+                } catch (err) {
+                    console.error('Invalid SSE payload', err);
                 }
-            } catch (err) {
-                console.error('Invalid SSE payload', err);
-            }
+            };
+            es.onerror = () => {
+                es.close();
+                if (active) {
+                    retryTimeout = setTimeout(() => {
+                        retryDelay = Math.min(retryDelay * 2, 30000); // cap at 30s
+                        connect();
+                    }, retryDelay);
+                }
+            };
+            es.onopen = () => { retryDelay = 2000; }; // reset on success
+        }
+
+        connect();
+        return () => {
+            active = false;
+            clearTimeout(retryTimeout);
+            es?.close();
         };
-        es.onerror = (err) => {
-            console.error('SSE error', err);
-        };
-        return () => es.close();
     }, []);
 
     // Initial load defaults to the current active event
@@ -88,20 +107,16 @@ export function useAttendanceData() {
     }, []);
 
     const fetchByEvent = async (eventId) => {
-        // Allow empty string '' to fetch all items
         if (eventId === undefined || eventId === null) return;
-        
         activeFilterRef.current = eventId;
         setLoadingHistory(true);
         try {
-            const params = new URLSearchParams();
-            params.set('eventId', eventId);
             const adminKey = localStorage.getItem('adminKey');
-            const resp = await fetch(`${API_BASE}/api/attendance?${params.toString()}`, {
-                headers: {
-                    'x-admin-key': adminKey || ''
-                }
-            });
+            // Only add eventId param if it's a non-empty string
+            const fetchUrl = eventId
+                ? `${API_BASE}/api/attendance?eventId=${encodeURIComponent(eventId)}`
+                : `${API_BASE}/api/attendance`;
+            const resp = await fetch(fetchUrl, { headers: { 'x-admin-key': adminKey || '' } });
             if (resp.status === 401) {
                 localStorage.removeItem('adminKey');
                 window.location.href = '/admin/login';
@@ -109,11 +124,7 @@ export function useAttendanceData() {
             }
             if (!resp.ok) throw new Error('Failed to fetch');
             const data = await resp.json();
-            if (Array.isArray(data)) {
-                // For filtered views, we replace the items to show only that event's data.
-                // Use spread to avoid mutating the original array.
-                setItems([...data].reverse());
-            }
+            if (Array.isArray(data)) setItems([...data].reverse());
         } catch (err) {
             console.warn('Failed to fetch by event', err);
             setError('Failed to load event history');

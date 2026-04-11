@@ -13,7 +13,7 @@ const AbsenteesPage = () => {
         try {
             const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/absentees`, {
-                headers: { 'Authorization': adminKey }
+                headers: { 'x-admin-key': adminKey }
             });
             const data = await res.json();
             setAbsentees(data);
@@ -71,7 +71,19 @@ const AbsenteesPage = () => {
                                         <td>{person.phone || '-'}</td>
                                         <td>{new Date(person.lastSeen).toLocaleDateString()}</td>
                                         <td>
-                                            <button className="small-btn outline">Follow Up</button>
+                                            <button
+                                                className="small-btn"
+                                                onClick={() => {
+                                                    if (person.phone) {
+                                                        const msg = encodeURIComponent(`Hi ${person.name}, we missed you at our last service. Hope to see you soon! 🙏`);
+                                                        window.open(`https://wa.me/${person.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                                    } else {
+                                                        alert('No phone number on record for this person.');
+                                                    }
+                                                }}
+                                            >
+                                                Follow Up
+                                            </button>
                                         </td>
                                     </tr>
                                 ))

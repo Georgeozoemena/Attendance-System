@@ -93,11 +93,14 @@ export default function MembersPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStage, setFilterStage] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [selected, setSelected] = useState(null);
-  const [activeView, setActiveView] = useState('directory'); // 'directory' | 'pipeline'
+  const [activeView, setActiveView] = useState('directory');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -112,10 +115,16 @@ export default function MembersPage() {
 
   async function handleSync() {
     setSyncing(true);
+    setSyncResult(null);
     try {
       const adminKey = localStorage.getItem('adminKey');
       const res = await fetch(`${API_BASE}/api/members/profiles/sync`, { method: 'POST', headers: { 'x-admin-key': adminKey } });
-      if (res.ok) { await fetchMembers(); }
+      if (res.ok) {
+        const data = await res.json();
+        setSyncResult(`Synced: ${data.created} new, ${data.updated} updated`);
+        await fetchMembers();
+        setTimeout(() => setSyncResult(null), 4000);
+      }
     } catch (err) { console.error(err); }
     finally { setSyncing(false); }
   }
@@ -137,6 +146,9 @@ export default function MembersPage() {
     const matchType = filterType === 'all' || m.type === filterType;
     return matchSearch && matchStage && matchType;
   });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Pipeline view — group by follow-up stage
   const pipeline = FOLLOW_UP_STAGES.filter(s => s.value !== 'none').map(stage => ({
@@ -163,7 +175,7 @@ export default function MembersPage() {
         <div className="top-bar-actions">
           <button className="action-btn" onClick={handleSync} disabled={syncing}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            {syncing ? 'Syncing...' : 'Sync from Attendance'}
+            {syncing ? 'Syncing...' : syncResult || 'Sync from Attendance'}
           </button>
         </div>
       </header>
@@ -179,17 +191,17 @@ export default function MembersPage() {
 
       {activeView === 'directory' && (
         <>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <div className="search-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ position: 'absolute', left: '10px', color: 'var(--text-4)' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input style={{ width: '100%', padding: '8px 12px 8px 32px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: 'var(--text-1)', outline: 'none' }}
-                placeholder="Search by name, phone, email..." value={search} onChange={e => setSearch(e.target.value)} />
+                placeholder="Search by name, phone, email..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
             </div>
-            <select className="input" style={{ width: 'auto' }} value={filterStage} onChange={e => setFilterStage(e.target.value)}>
+            <select className="input" style={{ width: 'auto' }} value={filterStage} onChange={e => { setFilterStage(e.target.value); setPage(1); }}>
               <option value="all">All Stages</option>
               {FOLLOW_UP_STAGES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
-            <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+            <select className="input" style={{ width: 'auto' }} value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}>
               <option value="all">All Types</option>
               <option value="member">Members</option>
               <option value="worker">Workers</option>
@@ -201,7 +213,7 @@ export default function MembersPage() {
               <table className="admin-table">
                 <thead><tr><th>Name</th><th>Phone</th><th>Type</th><th>Department</th><th>Status</th><th>Last Seen</th><th></th></tr></thead>
                 <tbody>
-                  {filtered.length > 0 ? filtered.map(m => {
+                  {paginated.length > 0 ? paginated.map(m => {
                     const stage = stageStyle(m.followUpStatus);
                     return (
                       <tr key={m.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(m)}>
@@ -224,6 +236,15 @@ export default function MembersPage() {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)', fontSize: '13px', color: 'var(--text-3)' }}>
+                <span>{filtered.length} members · page {page} of {totalPages}</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button className="small-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+                  <button className="small-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

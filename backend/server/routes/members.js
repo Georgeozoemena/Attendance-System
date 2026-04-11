@@ -122,20 +122,31 @@ router.post('/profiles/sync', auth, async (req, res) => {
             ) latest ON a.uniqueCode = latest.uniqueCode AND a.createdAt = latest.maxDate
         `);
 
+        if (records.length === 0) return res.json({ success: true, created: 0, updated: 0 });
+
+        // Fetch all existing uniqueCodes in one query
+        const existingRows = await dbAll('SELECT id, uniqueCode, followUpStatus FROM members WHERE uniqueCode IS NOT NULL');
+        const existingMap = new Map(existingRows.map(r => [r.uniqueCode, r]));
+
         let created = 0, updated = 0;
         const now = new Date().toISOString();
 
         for (const r of records) {
             if (!r.uniqueCode) continue;
-            const existing = await dbGet('SELECT id, followUpStatus FROM members WHERE uniqueCode = ?', [r.uniqueCode]);
+            const existing = existingMap.get(r.uniqueCode);
             if (existing) {
-                await dbRun(`UPDATE members SET name=?, email=?, phone=?, address=?, birthday=?, occupation=?, gender=?, nationality=?, department=?, type=?, updatedAt=? WHERE uniqueCode=?`,
-                    [r.name, r.email, r.phone, r.address, r.birthday, r.occupation, r.gender, r.nationality, r.department, r.type, now, r.uniqueCode]);
+                await dbRun(
+                    `UPDATE members SET name=?, email=?, phone=?, address=?, birthday=?, occupation=?, gender=?, nationality=?, department=?, type=?, updatedAt=? WHERE uniqueCode=?`,
+                    [r.name, r.email, r.phone, r.address, r.birthday, r.occupation, r.gender, r.nationality, r.department, r.type, now, r.uniqueCode]
+                );
                 updated++;
             } else {
                 const isFirstTimer = r.firstTimer === 1 || r.firstTimer === true;
-                await dbRun(`INSERT INTO members (id, uniqueCode, name, email, phone, address, birthday, occupation, gender, nationality, department, type, status, followUpStatus, joinDate, notes, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-                    [uuidv4(), r.uniqueCode, r.name, r.email, r.phone, r.address, r.birthday, r.occupation, r.gender, r.nationality, r.department, r.type, 'active', isFirstTimer ? 'new' : 'none', r.createdAt.split('T')[0], null, r.createdAt, now]);
+                await dbRun(
+                    `INSERT INTO members (id, uniqueCode, name, email, phone, address, birthday, occupation, gender, nationality, department, type, status, followUpStatus, joinDate, notes, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                    [uuidv4(), r.uniqueCode, r.name, r.email, r.phone, r.address, r.birthday, r.occupation, r.gender, r.nationality, r.department, r.type, 'active', isFirstTimer ? 'new' : 'none', r.createdAt.split('T')[0], null, r.createdAt, now]
+                );
+                existingMap.set(r.uniqueCode, { id: 'new' }); // prevent duplicate inserts
                 created++;
             }
         }

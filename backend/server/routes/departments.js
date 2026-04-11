@@ -10,8 +10,8 @@ router.get('/', auth, async (req, res) => {
         const depts = await dbAll('SELECT * FROM departments ORDER BY name ASC');
         const withCounts = await Promise.all(depts.map(async d => {
             const row = await dbGet(
-                'SELECT COUNT(DISTINCT uniqueCode) as count FROM attendance_local WHERE LOWER(department) = LOWER(?)',
-                [d.name]
+                'SELECT COUNT(*) as count FROM members WHERE LOWER(department) = LOWER(?) AND status = ?',
+                [d.name, 'active']
             );
             return { ...d, memberCount: row?.count || 0 };
         }));

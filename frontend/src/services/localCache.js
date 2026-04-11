@@ -1,8 +1,5 @@
 import { postAttendance } from './api.js';
 
-function latestKey(eventId) {
-  return `attendance:${eventId}:latest`;
-}
 function queueKey(eventId) {
   return `attendance:${eventId}:queue`;
 }
@@ -25,17 +22,6 @@ export function getUser(phone) {
   }
 }
 
-export function getLatest(eventId) {
-  try {
-    const raw = localStorage.getItem(latestKey(eventId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-export function saveLatest(eventId, payload) {
-  localStorage.setItem(latestKey(eventId), JSON.stringify(payload));
-}
 export function queueAdd(eventId, payload) {
   const k = queueKey(eventId);
   const arr = JSON.parse(localStorage.getItem(k) || '[]');
