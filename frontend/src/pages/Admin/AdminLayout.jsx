@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAttendanceData } from '../../hooks/useAttendanceData.js';
 import DashboardHeader from '../../components/Admin/DashboardHeader.jsx';
 import Sidebar from '../../components/Admin/Sidebar.jsx';
 import TopNavbar from '../../components/Admin/TopNavbar.jsx';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 export default function AdminLayout() {
     const { items, loadingHistory, fetchByEvent, currentEventId } = useAttendanceData();
@@ -14,21 +14,31 @@ export default function AdminLayout() {
     const [searchQuery, setSearchQuery] = useState('');
     const [events, setEvents] = useState([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
+    const [accessDeniedMsg, setAccessDeniedMsg] = useState(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         // Sync the local filter state with the auto-detected current event
         if (currentEventId) {
             setEventFilter(currentEventId);
         }
     }, [currentEventId]);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        function handleAccessDenied(e) {
+            setAccessDeniedMsg(e.detail?.message || "You don't have permission to access that page.");
+            setTimeout(() => setAccessDeniedMsg(null), 4000);
+        }
+        window.addEventListener('accessDenied', handleAccessDenied);
+        return () => window.removeEventListener('accessDenied', handleAccessDenied);
+    }, []);
+
+    useEffect(() => {
         const fetchEventsList = async () => {
             setLoadingEvents(true);
             try {
                 const adminKey = localStorage.getItem('adminKey');
                 const res = await fetch(`${API_BASE}/api/events`, {
-                    headers: { 'Authorization': adminKey }
+                    headers: { ...getAuthHeaders() }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -172,6 +182,16 @@ export default function AdminLayout() {
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="admin-main-content">
+                {accessDeniedMsg && (
+                    <div className="access-denied-toast" role="alert" aria-live="assertive">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        {accessDeniedMsg}
+                    </div>
+                )}
                 <TopNavbar onSearch={setSearchQuery} />
 
                 <div className="admin-content-scroll">

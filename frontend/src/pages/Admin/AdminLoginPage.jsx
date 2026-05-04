@@ -1,31 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLoginPage() {
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPw, setShowPw] = useState(false);
     const navigate = useNavigate();
+    const { login, isAuthenticated, user } = useAuth();
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            navigate(user.role === 'usher' ? '/admin/check-in' : '/admin/live', { replace: true });
+        }
+    }, [isAuthenticated, user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
+        // Inline validation — no network request if fields are empty
+        if (!email.trim() || !password) {
+            setError(!email.trim() ? 'Email is required.' : 'Password is required.');
+            return;
+        }
+
         setLoading(true);
         setError('');
         try {
             const resp = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
+                body: JSON.stringify({ email, password })
             });
             const data = await resp.json();
-            if (resp.ok && data.success) {
-                localStorage.setItem('adminKey', data.token);
-                localStorage.setItem('adminTokenExpiry', data.expiresAt.toString());
-                navigate('/admin');
+            if (resp.ok && data.token && data.user) {
+                login(data.token, data.user);
+                navigate(data.user.role === 'usher' ? '/admin/check-in' : '/admin/live', { replace: true });
             } else {
-                setError(data.error || 'Invalid password. Please try again.');
+                setError(data.error || 'Invalid email or password. Please try again.');
             }
         } catch {
             setError('Could not connect to server.');
@@ -54,6 +70,22 @@ export default function AdminLoginPage() {
                     <p className="login-sub">Sign in to your admin dashboard to continue.</p>
 
                     <form onSubmit={handleLogin}>
+                        <div style={{ marginBottom: 16 }}>
+                            <label className="login-field-label" htmlFor="email">Email</label>
+                            <div className="login-input-wrap">
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={e => { setEmail(e.target.value); setError(''); }}
+                                    placeholder="Enter your email"
+                                    autoFocus
+                                    autoComplete="email"
+                                    className={`login-input${error && !email.trim() ? ' has-error' : ''}`}
+                                />
+                            </div>
+                        </div>
+
                         <div>
                             <label className="login-field-label" htmlFor="pw">Password</label>
                             <div className="login-input-wrap">
@@ -63,9 +95,8 @@ export default function AdminLoginPage() {
                                     value={password}
                                     onChange={e => { setPassword(e.target.value); setError(''); }}
                                     placeholder="Enter your password"
-                                    autoFocus
-                                    required
-                                    className={`login-input${error ? ' has-error' : ''}`}
+                                    autoComplete="current-password"
+                                    className={`login-input${error && !password ? ' has-error' : ''}`}
                                 />
                                 <button type="button" className="login-pw-toggle" onClick={() => setShowPw(s => !s)} tabIndex={-1}>
                                     {showPw ? (
@@ -83,7 +114,7 @@ export default function AdminLoginPage() {
                             )}
                         </div>
 
-                        <button type="submit" disabled={loading || !password} className="login-submit">
+                        <button type="submit" disabled={loading} className="login-submit" style={{ marginTop: 24 }}>
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>

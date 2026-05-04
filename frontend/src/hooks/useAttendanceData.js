@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { connectToSSE } from '../services/realtime.js';
-import { API_BASE } from '../services/api.js';
+import { API_BASE, getAuthHeaders } from '../services/api.js';
 
 export function useAttendanceData() {
     const [items, setItems] = useState([]);
@@ -56,8 +56,6 @@ export function useAttendanceData() {
         async function loadInitial() {
             setLoadingHistory(true);
             try {
-                const adminKey = localStorage.getItem('adminKey');
-                
                 // 1. Fetch current active event
                 let targetEventId = '';
                 try {
@@ -78,11 +76,10 @@ export function useAttendanceData() {
                     : `${API_BASE}/api/attendance`;
 
                 const resp = await fetch(fetchUrl, {
-                    headers: { 'x-admin-key': adminKey || '' }
+                    headers: { ...getAuthHeaders() }
                 });
 
                 if (resp.status === 401) {
-                    localStorage.removeItem('adminKey');
                     window.location.href = '/admin/login';
                     return;
                 }
@@ -111,14 +108,12 @@ export function useAttendanceData() {
         activeFilterRef.current = eventId;
         setLoadingHistory(true);
         try {
-            const adminKey = localStorage.getItem('adminKey');
             // Only add eventId param if it's a non-empty string
             const fetchUrl = eventId
                 ? `${API_BASE}/api/attendance?eventId=${encodeURIComponent(eventId)}`
                 : `${API_BASE}/api/attendance`;
-            const resp = await fetch(fetchUrl, { headers: { 'x-admin-key': adminKey || '' } });
+            const resp = await fetch(fetchUrl, { headers: { ...getAuthHeaders() } });
             if (resp.status === 401) {
-                localStorage.removeItem('adminKey');
                 window.location.href = '/admin/login';
                 return;
             }

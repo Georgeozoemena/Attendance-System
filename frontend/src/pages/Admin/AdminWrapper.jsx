@@ -124,3 +124,15 @@ export function AdminDepartments() { return <DepartmentsPage />; }
 
 import SettingsPage from './SettingsPage.jsx';
 export function AdminSettings() { return <SettingsPage />; }
+
+import FollowUpLogPage from './FollowUpLogPage.jsx';
+export function AdminFollowUp() { return <FollowUpLogPage />; }
+
+import UserManagementPage from './UserManagementPage.jsx';
+export function AdminUsers() { return <UserManagementPage />; }
+
+import AuditLogPage from './AuditLogPage.jsx';
+export function AdminAudit() { return <AuditLogPage />; }
+
+import UsherCheckInPage from './UsherCheckInPage.jsx';
+export function AdminUsherCheckIn() { return <UsherCheckInPage />; }

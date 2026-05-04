@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { queueAdd, tryFlushQueue, saveUser } from '../../services/localCache.js';
-import { lookupAttendance, API_BASE } from '../../services/api.js';
+import { lookupAttendance, API_BASE, getAuthHeaders } from '../../services/api.js';
 import Toast from '../UI/Toast.jsx';
 
 const REQUIRED_FIELDS = ['name', 'email', 'phone', 'address', 'occupation', 'gender', 'nationality'];
@@ -44,7 +44,7 @@ export default function AttendanceForm({ eventId, type, isAdmin }) {
   useEffect(() => {
     if (isAdmin) {
       fetch(`${API_BASE}/api/events`, {
-        headers: { 'x-admin-key': localStorage.getItem('adminKey') }
+        headers: { ...getAuthHeaders() }
       })
         .then(res => res.json())
         .then(data => {

@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { dbAll, dbRun, dbGet } = require('../database');
 const auth = require('../middleware/auth');
+const { logAudit } = require('../helpers/auditLogger');
 
 // GET /api/departments
 router.get('/', auth, async (req, res) => {
@@ -50,6 +51,7 @@ router.post('/', auth, async (req, res) => {
             'INSERT INTO departments (id, name, description, leaderName, leaderPhone, meetingDay, meetingTime, leaderPhoto, createdAt) VALUES (?,?,?,?,?,?,?,?,?)',
             [id, name.trim(), description || null, leaderName || null, leaderPhone || null, meetingDay || null, meetingTime || null, leaderPhoto || null, new Date().toISOString()]
         );
+        await logAudit(req, 'create', 'departments', id);
         res.status(201).json({ success: true, id });
     } catch (err) {
         console.error('Department create failed', err);
@@ -81,6 +83,7 @@ router.patch('/:id', auth, async (req, res) => {
         if (!fields.length) return res.status(400).json({ error: 'Nothing to update' });
         vals.push(req.params.id);
         await dbRun(`UPDATE departments SET ${fields.join(', ')} WHERE id = ?`, vals);
+        await logAudit(req, 'update', 'departments', req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Department update failed', err);
@@ -92,6 +95,7 @@ router.patch('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
     try {
         await dbRun('DELETE FROM departments WHERE id = ?', [req.params.id]);
+        await logAudit(req, 'delete', 'departments', req.params.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete department' });

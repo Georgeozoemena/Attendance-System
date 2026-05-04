@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { dbAll, dbRun, dbGet } = require('../database');
 const auth = require('../middleware/auth');
+const { logAudit } = require('../helpers/auditLogger');
 
 const RATE_LIMIT_MAP = new Map();
 function isRateLimited(ip) {
@@ -66,6 +67,7 @@ router.patch('/:id', auth, async (req, res) => {
         if (!existing) return res.status(404).json({ error: 'Not found' });
         await dbRun('UPDATE prayer_requests SET status = ?, prayedAt = ? WHERE id = ?',
             [status, status === 'prayed' ? new Date().toISOString() : null, req.params.id]);
+        await logAudit(req, 'update', 'prayer_requests', req.params.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to update' });
@@ -76,6 +78,7 @@ router.patch('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
     try {
         await dbRun('DELETE FROM prayer_requests WHERE id = ?', [req.params.id]);
+        await logAudit(req, 'delete', 'prayer_requests', req.params.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete' });

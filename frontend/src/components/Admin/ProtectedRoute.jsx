@@ -1,30 +1,25 @@
-import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-
-// Check token expiry using a stable reference time
-function isTokenExpired(expiry) {
-    if (!expiry) return false;
-    // Use a fixed threshold if available, otherwise use Date.now()
-    // This is intentionally called during render for auth checks
-    return Date.now() > parseInt(expiry, 10);
-}
+import { useAuth } from '../../context/AuthContext';
 
 export default function ProtectedRoute() {
-    const adminKey = localStorage.getItem('adminKey');
-    const tokenExpiry = localStorage.getItem('adminTokenExpiry');
+  const { isAuthenticated, loading, user } = useAuth();
 
-    // Check if token exists and hasn't expired
-    if (!adminKey) {
-        return <Navigate to="/admin/login" replace />;
-    }
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontSize: '14px' }}>
+        Loading...
+      </div>
+    );
+  }
 
-    // Check token expiry (only if expiry is set)
-    if (isTokenExpired(tokenExpiry)) {
-        // Token expired, clear storage and redirect to login
-        localStorage.removeItem('adminKey');
-        localStorage.removeItem('adminTokenExpiry');
-        return <Navigate to="/admin/login" replace />;
-    }
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
-    return <Outlet />;
+  // Redirect usher to their scoped page
+  if (user?.role === 'usher') {
+    return <Navigate to="/admin/check-in" replace />;
+  }
+
+  return <Outlet />;
 }

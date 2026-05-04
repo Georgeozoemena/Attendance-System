@@ -11,10 +11,18 @@ const testimoniesRouter = require('./routes/testimonies');
 const membersRouter = require('./routes/members');
 const prayerRouter = require('./routes/prayer');
 const departmentsRouter = require('./routes/departments');
+const usersRouter = require('./routes/users');
+const followupRouter = require('./routes/followup');
+const auditRouter = require('./routes/audit');
+const checkinRouter = require('./routes/checkin');
+const authMiddleware = require('./middleware/auth');
 
 // Warn about optional environment variables
 if (!process.env.APPS_SCRIPT_WEBHOOK) {
   console.warn('Warning: APPS_SCRIPT_WEBHOOK is not set. Google Sheets sync will be disabled.');
+}
+if (!process.env.JWT_SECRET) {
+  console.warn('Warning: JWT_SECRET is not set. Admin authentication will fail!');
 }
 
 const app = express();
@@ -48,6 +56,23 @@ app.use((req, res, next) => {
   next();
 });
 
+// Apply JWT auth to all /api/* routes except public ones
+app.use('/api', (req, res, next) => {
+  const publicPaths = [
+    { method: 'POST', path: '/auth/login' },
+    { method: 'POST', path: '/attendance' },
+    { method: 'POST', path: '/testimonies' },
+    { method: 'POST', path: '/prayer' },
+    { method: 'GET',  path: '/events/current' },
+    { method: 'GET',  path: '/lookup' },
+    { method: 'GET',  path: '/lookup/smart' },
+    { method: 'GET',  path: '/departments/list' },
+  ];
+  const isPublic = publicPaths.some(p => p.method === req.method && req.path === p.path);
+  if (isPublic) return next();
+  return authMiddleware(req, res, next);
+});
+
 // Mount API routes under /api
 app.use('/api/auth', authRouter);
 app.use('/api', attendanceRouter);
@@ -58,6 +83,10 @@ app.use('/api/testimonies', testimoniesRouter);
 app.use('/api/members', membersRouter);
 app.use('/api/prayer', prayerRouter);
 app.use('/api/departments', departmentsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/followup-logs', followupRouter);
+app.use('/api/audit', auditRouter);
+app.use('/api/checkin', checkinRouter);
 
 const { dbReady } = require('./database');
 const PORT = process.env.PORT || 4000;
@@ -65,9 +94,6 @@ const PORT = process.env.PORT || 4000;
 dbReady.then(() => {
   app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
-    if (!process.env.ADMIN_PASSWORD) {
-      console.warn('Warning: ADMIN_PASSWORD is not set. Admin routes will be unprotected (INSECURE)!');
-    }
   });
 });
 

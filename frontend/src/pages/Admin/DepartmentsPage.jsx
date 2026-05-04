@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 const MEETING_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -119,14 +119,13 @@ export default function DepartmentsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const adminKey = localStorage.getItem('adminKey');
 
   useEffect(() => { fetchDepts(); }, []);
 
   async function fetchDepts() {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/departments`, { headers: { 'x-admin-key': adminKey } });
+      const res = await fetch(`${API_BASE}/api/departments`, { headers: { ...getAuthHeaders() } });
       if (res.ok) setDepts(await res.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -134,16 +133,16 @@ export default function DepartmentsPage() {
 
   async function handleSave(id, form) {
     if (id) {
-      await fetch(`${API_BASE}/api/departments/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(form) });
+      await fetch(`${API_BASE}/api/departments/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(form) });
     } else {
-      await fetch(`${API_BASE}/api/departments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify(form) });
+      await fetch(`${API_BASE}/api/departments`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(form) });
     }
     fetchDepts();
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Delete this department?')) return;
-    await fetch(`${API_BASE}/api/departments/${id}`, { method: 'DELETE', headers: { 'x-admin-key': adminKey } });
+    await fetch(`${API_BASE}/api/departments/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
     setDepts(prev => prev.filter(d => d.id !== id));
   }
 

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 export default function AdminQRGenerator({ eventId, initialCategory = 'member' }) {
     const qrRef = useRef();
@@ -22,12 +22,10 @@ export default function AdminQRGenerator({ eventId, initialCategory = 'member' }
 
     const fetchEvents = async () => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/events`, {
-                headers: { 'Authorization': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.status === 401) {
-                localStorage.removeItem('adminKey');
                 window.location.href = '/admin/login';
                 return;
             }

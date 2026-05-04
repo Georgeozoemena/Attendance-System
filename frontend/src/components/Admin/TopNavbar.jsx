@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import RoleBadge from './RoleBadge';
+import { ROLE_COLORS } from '../../config/permissions';
 
 function useOrgSettings() {
     const [org, setOrg] = useState({
@@ -23,13 +26,12 @@ function useOrgSettings() {
 function NotificationsPanel({ onClose, onNavigate }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const adminKey = localStorage.getItem('adminKey');
 
     useEffect(() => {
         async function fetchAll() {
             setLoading(true);
             try {
-                const headers = { 'x-admin-key': adminKey };
+                const headers = { ...getAuthHeaders() };
                 const [prayerRes, testimonyRes, birthdayRes, membersRes] = await Promise.allSettled([
                     fetch(`${API_BASE}/api/prayer?status=pending`, { headers }),
                     fetch(`${API_BASE}/api/testimonies?status=pending`, { headers }),
@@ -102,7 +104,7 @@ function NotificationsPanel({ onClose, onNavigate }) {
             }
         }
         fetchAll();
-    }, [adminKey]);
+    }, []);
 
     return (
         <div style={{
@@ -161,7 +163,11 @@ const TopNavbar = ({ onSearch }) => {
     const notifRef = useRef();
     const navigate = useNavigate();
     const org = useOrgSettings();
-    const adminKey = localStorage.getItem('adminKey');
+    const { user } = useAuth();
+
+    // Derive avatar initial and colour from user
+    const avatarInitial = user?.name ? user.name.charAt(0).toUpperCase() : '?';
+    const avatarColor = user?.role ? (ROLE_COLORS[user.role] || 'var(--dc-blue)') : 'var(--dc-blue)';
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -172,7 +178,7 @@ const TopNavbar = ({ onSearch }) => {
     useEffect(() => {
         async function fetchCount() {
             try {
-                const headers = { 'x-admin-key': adminKey };
+                const headers = { ...getAuthHeaders() };
                 const [p, t] = await Promise.allSettled([
                     fetch(`${API_BASE}/api/prayer?status=pending`, { headers }),
                     fetch(`${API_BASE}/api/testimonies?status=pending`, { headers }),
@@ -186,7 +192,7 @@ const TopNavbar = ({ onSearch }) => {
         fetchCount();
         const interval = setInterval(fetchCount, 60000);
         return () => clearInterval(interval);
-    }, [adminKey]);
+    }, []);
 
     // Close panel on outside click
     useEffect(() => {
@@ -260,15 +266,20 @@ const TopNavbar = ({ onSearch }) => {
 
                 <div className="user-profile">
                     <div className="profile-info">
-                        <span className="user-name">{org.churchName}</span>
-                        <span className="user-role">{org.parish}</span>
+                        <span className="user-name">{user?.name || org.churchName}</span>
+                        <RoleBadge role={user?.role} />
                     </div>
-                    <div className="profile-avatar" style={{ background: 'var(--dc-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 34, height: 34, flexShrink: 0 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                            <path d="M2 17l10 5 10-5" />
-                            <path d="M2 12l10 5 10-5" />
-                        </svg>
+                    <div
+                        className="profile-avatar"
+                        style={{
+                            background: avatarColor,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: '50%', width: 34, height: 34, flexShrink: 0,
+                            color: '#fff', fontWeight: '700', fontSize: '14px',
+                            userSelect: 'none',
+                        }}
+                    >
+                        {avatarInitial}
                     </div>
                 </div>
             </div>

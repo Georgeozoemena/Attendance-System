@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { dbAll, dbRun, dbGet } = require('../database');
 const auth = require('../middleware/auth');
+const { logAudit } = require('../helpers/auditLogger');
 
 // GET /api/events/current (Public)
 router.get('/current', async (req, res) => {
@@ -49,6 +50,7 @@ router.post('/', auth, async (req, res) => {
             'INSERT INTO events (id, name, type, date, start_time, status, expiry_duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [id, name, type, date, start_time || null, 'active', expiry_duration || 0, createdAt]
         );
+        await logAudit(req, 'create', 'events', id);
         res.status(201).json({ id, name, type, date, start_time: start_time || null, status: 'active', expiry_duration: expiry_duration || 0, createdAt });
     } catch (err) {
         console.error('Failed to create event', err);
@@ -84,6 +86,7 @@ router.patch('/:id/freeze', auth, async (req, res) => {
             [newIsFrozen, newFreezeStartedAt, newTotalFrozenMs, req.params.id]
         );
 
+        await logAudit(req, 'update', 'events', req.params.id);
         res.json({ id: req.params.id, is_frozen: newIsFrozen, total_frozen_ms: newTotalFrozenMs });
     } catch (err) {
         console.error('Failed to toggle freeze', err);
@@ -95,6 +98,7 @@ router.patch('/:id/freeze', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
     try {
         await dbRun('DELETE FROM events WHERE id = ?', [req.params.id]);
+        await logAudit(req, 'delete', 'events', req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete event', err);

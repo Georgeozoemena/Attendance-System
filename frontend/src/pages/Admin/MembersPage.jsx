@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 const FOLLOW_UP_STAGES = [
   { value: 'new', label: 'New Visitor', color: 'var(--amber)', bg: 'var(--amber-lt)', border: 'var(--amber-border)' },
@@ -104,8 +104,7 @@ export default function MembersPage() {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const adminKey = localStorage.getItem('adminKey');
-      const res = await fetch(`${API_BASE}/api/members/profiles`, { headers: { 'x-admin-key': adminKey } });
+      const res = await fetch(`${API_BASE}/api/members/profiles`, { headers: { ...getAuthHeaders() } });
       if (res.ok) setMembers(await res.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -117,8 +116,7 @@ export default function MembersPage() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const adminKey = localStorage.getItem('adminKey');
-      const res = await fetch(`${API_BASE}/api/members/profiles/sync`, { method: 'POST', headers: { 'x-admin-key': adminKey } });
+      const res = await fetch(`${API_BASE}/api/members/profiles/sync`, { method: 'POST', headers: { ...getAuthHeaders() } });
       if (res.ok) {
         const data = await res.json();
         setSyncResult(`Synced: ${data.created} new, ${data.updated} updated`);
@@ -130,10 +128,9 @@ export default function MembersPage() {
   }
 
   async function handleSave(id, updates) {
-    const adminKey = localStorage.getItem('adminKey');
     await fetch(`${API_BASE}/api/members/profiles/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(updates)
     });
     setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));

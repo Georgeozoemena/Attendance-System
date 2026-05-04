@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import BulkMessageModal from '../../components/Admin/BulkMessageModal.jsx';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 export default function MessagesPage() {
     const { items } = useOutletContext();
@@ -18,8 +18,7 @@ export default function MessagesPage() {
 
     const fetchMessageData = async () => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
-            const headers = { 'x-admin-key': adminKey };
+            const headers = { ...getAuthHeaders() };
             const [historyRes, scheduledRes, insightsRes] = await Promise.all([
                 fetch(`${API_BASE}/api/messages/history`, { headers }),
                 fetch(`${API_BASE}/api/messages/scheduled`, { headers }),

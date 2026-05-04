@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 const MemberDetailsModal = ({ memberCode, onClose }) => {
     const [member, setMember] = useState(null);
@@ -11,9 +11,8 @@ const MemberDetailsModal = ({ memberCode, onClose }) => {
 
     const fetchDetails = async () => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/members/${memberCode}`, {
-                headers: { 'Authorization': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.ok) {
                 const data = await res.json();

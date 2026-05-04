@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { dbGet, dbRun } = require('../database');
 
 // Simple in-memory rate limiter for login attempts
 const loginAttempts = new Map();
@@ -25,53 +27,8 @@ function isRateLimited(ip) {
     return false;
 }
 
-/**
- * Generate a cryptographically signed session token.
- * Format: <expiry>.<hmac>
- */
-function generateSessionToken(expiry) {
-    const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
-    const payload = String(expiry);
-    const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-    return `${payload}.${hmac}`;
-}
-
-/**
- * Verify a session token. Returns expiry timestamp or null if invalid.
- */
-function verifySessionToken(token) {
-    try {
-        const dotIndex = token.lastIndexOf('.');
-        if (dotIndex === -1) return null;
-        const payload = token.slice(0, dotIndex);
-        const hmac = token.slice(dotIndex + 1);
-        if (!payload || !hmac) return null;
-        const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
-        const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-        const hmacBuf = Buffer.from(hmac, 'hex');
-        const expectedBuf = Buffer.from(expected, 'hex');
-        // Buffers must be same length for timingSafeEqual
-        if (hmacBuf.length !== expectedBuf.length) return null;
-        if (!crypto.timingSafeEqual(hmacBuf, expectedBuf)) return null;
-        return parseInt(payload, 10);
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Safe constant-time string comparison that handles different byte lengths.
- */
-function safeCompare(a, b) {
-    const aBuf = Buffer.from(a, 'utf8');
-    const bBuf = Buffer.from(b, 'utf8');
-    if (aBuf.length !== bBuf.length) return false;
-    return crypto.timingSafeEqual(aBuf, bBuf);
-}
-
-router.post('/login', (req, res) => {
-    const { password } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD;
+router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
     const clientIp = req.ip || req.connection.remoteAddress;
 
     if (isRateLimited(clientIp)) {
@@ -80,28 +37,80 @@ router.post('/login', (req, res) => {
         });
     }
 
-    if (!adminPassword) {
-        return res.status(500).json({ error: 'Server misconfigured: ADMIN_PASSWORD not set' });
-    }
-
-    if (!password || typeof password !== 'string') {
-        return res.status(401).json({ error: 'Invalid password' });
+    if (!email || !password) {
+        return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     try {
-        if (safeCompare(password, adminPassword)) {
-            const expiresAt = Date.now() + 4 * 60 * 60 * 1000; // 4 hours
-            const token = generateSessionToken(expiresAt);
-            return res.json({ success: true, token, expiresAt });
+        // Look up user by email
+        const user = await dbGet('SELECT * FROM users WHERE email = ?', [email]);
+
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password' });
         }
-        console.warn(`Failed admin login from ${clientIp} at ${new Date().toISOString()}`);
-        return res.status(401).json({ error: 'Invalid password' });
+
+        // Verify password
+        let passwordMatch;
+        try {
+            passwordMatch = await bcrypt.compare(password, user.password_hash);
+        } catch (err) {
+            console.error('bcrypt compare error:', err);
+            return res.status(500).json({ error: 'Login failed' });
+        }
+
+        if (!passwordMatch) {
+            console.warn(`Failed login attempt for ${email} from ${clientIp} at ${new Date().toISOString()}`);
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        // Check if account is active
+        if (!user.is_active) {
+            return res.status(403).json({ error: 'Account is deactivated. Contact your administrator.' });
+        }
+
+        // Issue JWT
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            console.error('FATAL: JWT_SECRET environment variable is not set');
+            return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET not set' });
+        }
+
+        const payload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        };
+
+        const token = jwt.sign(payload, jwtSecret, { expiresIn: '8h' });
+
+        // Update last_login
+        const now = new Date().toISOString();
+        await dbRun('UPDATE users SET last_login = ? WHERE id = ?', [now, user.id]);
+
+        return res.json({
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            },
+        });
     } catch (err) {
         console.error('Login error:', err);
         return res.status(500).json({ error: 'Login failed' });
     }
 });
 
-// Export both the router and verifySessionToken
+/**
+ * Stub for backward compatibility — the old middleware imported verifySessionToken from this module.
+ * The new JWT-based middleware no longer uses it.
+ */
+function verifySessionToken() {
+    return null;
+}
+
 router.verifySessionToken = verifySessionToken;
 module.exports = router;
+module.exports.verifySessionToken = verifySessionToken;

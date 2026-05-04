@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
-const AbsenteesPage = () => {
+const AbsenteesPage = ({ readOnly, viewMode }) => {
     const [absentees, setAbsentees] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -11,9 +11,8 @@ const AbsenteesPage = () => {
 
     const fetchAbsentees = async () => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/absentees`, {
-                headers: { 'x-admin-key': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             const data = await res.json();
             setAbsentees(data);
@@ -26,6 +25,29 @@ const AbsenteesPage = () => {
 
     if (loading) {
         return <div className="loading-state">Loading absentees...</div>;
+    }
+
+    // Summary-only view (e.g. pastor role via viewMode='summary')
+    if (viewMode === 'summary') {
+        return (
+            <div className="admin-page-container">
+                <header className="page-header">
+                    <div className="header-content">
+                        <h1>Absentees</h1>
+                        <p className="subtitle">People who were here last time but not today</p>
+                    </div>
+                </header>
+                <div className="admin-card-grid" style={{ gridTemplateColumns: '1fr', maxWidth: '260px' }}>
+                    <div className="stat-card">
+                        <div className="stat-card-top">
+                            <span className="stat-label">Total Absentees</span>
+                        </div>
+                        <div className="stat-value">{absentees.length}</div>
+                        <div className="stat-sub">Contact details hidden for your role</div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -59,7 +81,7 @@ const AbsenteesPage = () => {
                                 <th>Name</th>
                                 <th>Phone</th>
                                 <th>Last Seen</th>
-                                <th>Action</th>
+                                {!readOnly && <th>Action</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -70,26 +92,28 @@ const AbsenteesPage = () => {
                                         <td className="name-cell">{person.name}</td>
                                         <td>{person.phone || '-'}</td>
                                         <td>{new Date(person.lastSeen).toLocaleDateString()}</td>
-                                        <td>
-                                            <button
-                                                className="small-btn"
-                                                onClick={() => {
-                                                    if (person.phone) {
-                                                        const msg = encodeURIComponent(`Hi ${person.name}, we missed you at our last service. Hope to see you soon! 🙏`);
-                                                        window.open(`https://wa.me/${person.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                                                    } else {
-                                                        alert('No phone number on record for this person.');
-                                                    }
-                                                }}
-                                            >
-                                                Follow Up
-                                            </button>
-                                        </td>
+                                        {!readOnly && (
+                                            <td>
+                                                <button
+                                                    className="small-btn"
+                                                    onClick={() => {
+                                                        if (person.phone) {
+                                                            const msg = encodeURIComponent(`Hi ${person.name}, we missed you at our last service. Hope to see you soon! 🙏`);
+                                                            window.open(`https://wa.me/${person.phone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                                        } else {
+                                                            alert('No phone number on record for this person.');
+                                                        }
+                                                    }}
+                                                >
+                                                    Follow Up
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="empty-state">No absentees found. Great attendance today!</td>
+                                    <td colSpan={readOnly ? 4 : 5} className="empty-state">No absentees found. Great attendance today!</td>
                                 </tr>
                             )}
                         </tbody>

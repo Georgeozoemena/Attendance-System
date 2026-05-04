@@ -1,32 +1,71 @@
-const authRouter = require('../routes/auth');
-const { verifySessionToken } = authRouter;
+const jwt = require('jsonwebtoken');
+const { dbGet } = require('../database');
 
-const adminPassword = process.env.ADMIN_PASSWORD;
+/**
+ * JWT authentication middleware.
+ * Extracts the token from `Authorization: Bearer <token>`, verifies it,
+ * checks that the user is still active, and attaches the decoded payload
+ * to `req.user`.
+ */
+async function authMiddleware(req, res, next) {
+    const jwtSecret = process.env.JWT_SECRET;
 
-function authMiddleware(req, res, next) {
-    if (!adminPassword) {
-        console.error('FATAL: ADMIN_PASSWORD environment variable is not set');
-        return res.status(500).json({ error: 'Server misconfigured: ADMIN_PASSWORD not set' });
+    if (!jwtSecret) {
+        console.error('FATAL: JWT_SECRET environment variable is not set');
+        return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET not set' });
     }
 
-    const token = req.headers['authorization'] || req.headers['x-admin-key'] || req.query.key;
+    const authHeader = req.headers['authorization'];
 
-    if (!token) {
-        return res.status(401).json({ error: 'Unauthorized: Admin access required' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: No token provided' });
     }
 
-    // Verify signed session token
-    const expiry = verifySessionToken(token);
-    if (expiry === null) {
-        console.warn(`Invalid admin token from ${req.ip} at ${new Date().toISOString()}`);
-        return res.status(401).json({ error: 'Unauthorized: Invalid or malformed token' });
+    const token = authHeader.slice(7); // strip "Bearer "
+
+    let decoded;
+    try {
+        decoded = jwt.verify(token, jwtSecret);
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Unauthorized: Token expired, please log in again' });
+        }
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
 
-    if (Date.now() > expiry) {
-        return res.status(401).json({ error: 'Unauthorized: Session expired, please log in again' });
+    // Confirm the user is still active in the database
+    try {
+        const user = await dbGet('SELECT is_active FROM users WHERE id = ?', [decoded.id]);
+
+        if (!user || !user.is_active) {
+            return res.status(403).json({ error: 'Forbidden: Account is deactivated' });
+        }
+    } catch (err) {
+        console.error('authMiddleware DB error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 
+    req.user = decoded;
     next();
 }
 
+/**
+ * Role-based access control middleware factory.
+ * Returns a middleware that allows only users whose role is in the provided list.
+ *
+ * Usage: router.get('/protected', requireRole('developer', 'church_admin'), handler)
+ *
+ * @param {...string} roles - Allowed roles
+ */
+function requireRole(...roles) {
+    return function roleGuard(req, res, next) {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+        }
+        next();
+    };
+}
+
 module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.requireRole = requireRole;

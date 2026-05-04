@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
 const STATUS_TABS = ['pending', 'approved', 'rejected'];
 
-function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab }) {
+function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab, readOnly }) {
     if (!t) return null;
 
     return (
@@ -55,7 +55,7 @@ function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab }
 
                 {/* Actions */}
                 <div className="modal-actions">
-                    {activeTab === 'pending' && (
+                    {!readOnly && activeTab === 'pending' && (
                         <>
                             <button className="modal-btn primary" onClick={() => onAction(t.id, 'approved')}>
                                 Approve
@@ -65,19 +65,21 @@ function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab }
                             </button>
                         </>
                     )}
-                    {activeTab === 'approved' && (
+                    {!readOnly && activeTab === 'approved' && (
                         <button className="modal-btn primary danger" onClick={() => onAction(t.id, 'rejected')}>
                             Revoke Approval
                         </button>
                     )}
-                    {activeTab === 'rejected' && (
+                    {!readOnly && activeTab === 'rejected' && (
                         <button className="modal-btn primary" onClick={() => onAction(t.id, 'approved')}>
                             Approve
                         </button>
                     )}
-                    <button className="modal-btn" style={{ borderColor: 'var(--red-border)', color: 'var(--red)' }} onClick={() => onDelete(t.id)}>
-                        Delete
-                    </button>
+                    {!readOnly && (
+                        <button className="modal-btn" style={{ borderColor: 'var(--red-border)', color: 'var(--red)' }} onClick={() => onDelete(t.id)}>
+                            Delete
+                        </button>
+                    )}
                     <button className="modal-btn" onClick={onClose}>Close</button>
                 </div>
             </div>
@@ -85,7 +87,7 @@ function TestimonyModal({ testimony: t, onClose, onAction, onDelete, activeTab }
     );
 }
 
-export default function TestimoniesPage() {
+export default function TestimoniesPage({ readOnly }) {
     const [testimonies, setTestimonies] = useState([]);
     const [activeTab, setActiveTab] = useState('pending');
     const [loading, setLoading] = useState(true);
@@ -98,9 +100,8 @@ export default function TestimoniesPage() {
     const fetchTestimonies = async (status) => {
         setLoading(true);
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/testimonies?status=${status}`, {
-                headers: { 'x-admin-key': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.ok) setTestimonies(await res.json());
         } catch (err) {
@@ -112,10 +113,9 @@ export default function TestimoniesPage() {
 
     const handleAction = async (id, action) => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/testimonies/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ status: action })
             });
             if (res.ok) {
@@ -130,10 +130,9 @@ export default function TestimoniesPage() {
     const handleDelete = async (id) => {
         if (!window.confirm('Delete this testimony permanently?')) return;
         try {
-            const adminKey = localStorage.getItem('adminKey');
             await fetch(`${API_BASE}/api/testimonies/${id}`, {
                 method: 'DELETE',
-                headers: { 'x-admin-key': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             setTestimonies(prev => prev.filter(t => t.id !== id));
             setSelected(null);
@@ -241,6 +240,7 @@ export default function TestimoniesPage() {
                 onClose={() => setSelected(null)}
                 onAction={handleAction}
                 onDelete={handleDelete}
+                readOnly={readOnly}
             />
         </div>
     );

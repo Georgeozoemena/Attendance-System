@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { dbAll, dbRun, dbGet } = require('../database');
 const auth = require('../middleware/auth');
+const { logAudit } = require('../helpers/auditLogger');
 
 const VALID_CATEGORIES = ['healing', 'provision', 'breakthrough', 'salvation', 'family', 'general'];
 const RATE_LIMIT_MAP = new Map(); // ip -> { count, resetTime }
@@ -90,6 +91,7 @@ router.patch('/:id', auth, async (req, res) => {
             'UPDATE testimonies SET status = ?, reviewedAt = ? WHERE id = ?',
             [status, new Date().toISOString(), req.params.id]
         );
+        await logAudit(req, 'update', 'testimonies', req.params.id);
         res.json({ success: true, status });
     } catch (err) {
         console.error('Testimony update failed', err);
@@ -101,6 +103,7 @@ router.patch('/:id', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
     try {
         await dbRun('DELETE FROM testimonies WHERE id = ?', [req.params.id]);
+        await logAudit(req, 'delete', 'testimonies', req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Testimony delete failed', err);

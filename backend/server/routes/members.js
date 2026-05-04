@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { dbAll, dbRun, dbGet } = require('../database');
 const auth = require('../middleware/auth');
+const { logAudit } = require('../helpers/auditLogger');
 
 // GET /api/members/profiles — full member profiles
 router.get('/profiles', auth, async (req, res) => {
@@ -70,11 +71,13 @@ router.post('/profiles', auth, async (req, res) => {
         if (existing) {
             await dbRun(`UPDATE members SET name=?, email=?, phone=?, address=?, birthday=?, occupation=?, gender=?, nationality=?, department=?, type=?, notes=?, followUpStatus=?, updatedAt=? WHERE uniqueCode=?`,
                 [name, email, phone, address, birthday, occupation, gender, nationality, department, type || 'member', notes, followUpStatus || 'none', now, uniqueCode]);
+            await logAudit(req, 'update', 'members', existing.id);
             res.json({ success: true, id: existing.id });
         } else {
             const id = uuidv4();
             await dbRun(`INSERT INTO members (id, uniqueCode, name, email, phone, address, birthday, occupation, gender, nationality, department, type, status, followUpStatus, joinDate, notes, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
                 [id, uniqueCode || null, name, email, phone, address, birthday, occupation, gender, nationality, department, type || 'member', 'active', followUpStatus || 'none', now.split('T')[0], notes, now, now]);
+            await logAudit(req, 'create', 'members', id);
             res.status(201).json({ success: true, id });
         }
     } catch (err) {
@@ -103,6 +106,7 @@ router.patch('/profiles/:id', auth, async (req, res) => {
         vals.push(req.params.id);
 
         await dbRun(`UPDATE members SET ${fields.join(', ')} WHERE id = ?`, vals);
+        await logAudit(req, 'update', 'members', req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Member update failed', err);

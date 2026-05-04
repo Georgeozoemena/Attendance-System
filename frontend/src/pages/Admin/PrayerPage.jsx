@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
-export default function PrayerPage() {
+export default function PrayerPage({ readOnly }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
   const [selected, setSelected] = useState(null);
-  const adminKey = localStorage.getItem('adminKey');
 
   useEffect(() => { fetchRequests(activeTab); }, [activeTab]);
 
   async function fetchRequests(status) {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/prayer?status=${status}`, { headers: { 'x-admin-key': adminKey } });
+      const res = await fetch(`${API_BASE}/api/prayer?status=${status}`, { headers: { ...getAuthHeaders() } });
       if (res.ok) setRequests(await res.json());
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -22,7 +21,7 @@ export default function PrayerPage() {
   async function handleAction(id, status) {
     await fetch(`${API_BASE}/api/prayer/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ status })
     });
     setRequests(prev => prev.filter(r => r.id !== id));
@@ -31,7 +30,7 @@ export default function PrayerPage() {
 
   async function handleDelete(id) {
     if (!window.confirm('Delete this prayer request?')) return;
-    await fetch(`${API_BASE}/api/prayer/${id}`, { method: 'DELETE', headers: { 'x-admin-key': adminKey } });
+    await fetch(`${API_BASE}/api/prayer/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
     setRequests(prev => prev.filter(r => r.id !== id));
     setSelected(null);
   }
@@ -111,15 +110,17 @@ export default function PrayerPage() {
               <p style={{ fontSize: '14px', color: 'var(--text-1)', lineHeight: '1.7', whiteSpace: 'pre-wrap', margin: 0 }}>{selected.request}</p>
             </div>
             <div className="modal-actions">
-              {activeTab === 'pending' && (
+              {!readOnly && activeTab === 'pending' && (
                 <button className="modal-btn primary" onClick={() => handleAction(selected.id, 'prayed')}>
                   🙏 Mark as Prayed
                 </button>
               )}
-              {activeTab === 'prayed' && (
+              {!readOnly && activeTab === 'prayed' && (
                 <button className="modal-btn" onClick={() => handleAction(selected.id, 'pending')}>Move to Pending</button>
               )}
-              <button className="modal-btn" style={{ borderColor: 'var(--red-border)', color: 'var(--red)' }} onClick={() => handleDelete(selected.id)}>Delete</button>
+              {!readOnly && (
+                <button className="modal-btn" style={{ borderColor: 'var(--red-border)', color: 'var(--red)' }} onClick={() => handleDelete(selected.id)}>Delete</button>
+              )}
               <button className="modal-btn" onClick={() => setSelected(null)}>Close</button>
             </div>
           </div>

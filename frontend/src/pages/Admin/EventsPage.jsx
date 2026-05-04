@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
-import { API_BASE } from '../../services/api';
+import { API_BASE, getAuthHeaders } from '../../services/api';
 
-const EventsPage = () => {
+const EventsPage = ({ readOnly }) => {
     const { fetchByEvent, setEventFilter } = useOutletContext();
     const navigate = useNavigate();
     const [events, setEvents] = useState([]);
@@ -22,12 +22,10 @@ const EventsPage = () => {
 
     const fetchEvents = async () => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/events`, {
-                headers: { 'Authorization': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.status === 401) {
-                localStorage.removeItem('adminKey');
                 window.location.href = '/admin/login';
                 return;
             }
@@ -47,11 +45,10 @@ const EventsPage = () => {
     const handleAddEvent = async (e) => {
         e.preventDefault();
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/events`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': adminKey,
+                    ...getAuthHeaders(),
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(newEvent)
@@ -75,10 +72,9 @@ const EventsPage = () => {
     const handleDeleteEvent = async (id) => {
         if (!window.confirm('Are you sure you want to delete this event?')) return;
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/events/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.ok) fetchEvents();
         } catch (err) {
@@ -88,10 +84,9 @@ const EventsPage = () => {
 
     const handleToggleFreeze = async (id) => {
         try {
-            const adminKey = localStorage.getItem('adminKey');
             const res = await fetch(`${API_BASE}/api/events/${id}/freeze`, {
                 method: 'PATCH',
-                headers: { 'Authorization': adminKey }
+                headers: { ...getAuthHeaders() }
             });
             if (res.ok) fetchEvents();
         } catch (err) {
@@ -122,13 +117,15 @@ const EventsPage = () => {
                     <h1>Events Management</h1>
                     <p className="subtitle">Create and manage church services and programs</p>
                 </div>
-                <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    New Event
-                </button>
+                {!readOnly && (
+                    <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        New Event
+                    </button>
+                )}
             </header>
 
             <div className="data-table-card" style={{ marginTop: '24px' }}>
@@ -140,7 +137,7 @@ const EventsPage = () => {
                                 <th>Event Name</th>
                                 <th>Type</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                {!readOnly && <th>Actions</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -162,23 +159,25 @@ const EventsPage = () => {
                                                 {event.is_frozen ? 'FROZEN' : event.status}
                                             </span>
                                         </td>
-                                        <td style={{ display: 'flex', gap: '8px' }}>
-                                            <button 
-                                                className={`small-btn text ${event.is_frozen ? 'warning' : ''}`} 
-                                                onClick={() => handleToggleFreeze(event.id)}
-                                                style={{ color: event.is_frozen ? '#f59e0b' : 'var(--primary)' }}
-                                            >
-                                                {event.is_frozen ? 'Resume' : 'Freeze'}
-                                            </button>
-                                            <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
-                                            <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
-                                            <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
-                                        </td>
+                                        {!readOnly && (
+                                            <td style={{ display: 'flex', gap: '8px' }}>
+                                                <button 
+                                                    className={`small-btn text ${event.is_frozen ? 'warning' : ''}`} 
+                                                    onClick={() => handleToggleFreeze(event.id)}
+                                                    style={{ color: event.is_frozen ? '#f59e0b' : 'var(--primary)' }}
+                                                >
+                                                    {event.is_frozen ? 'Resume' : 'Freeze'}
+                                                </button>
+                                                <button className="small-btn text" onClick={() => handleViewAttendance(event.id)} style={{ color: 'var(--primary)' }}>View Data</button>
+                                                <button className="small-btn text" onClick={() => copyEventLink(event.id)}>Copy Link</button>
+                                                <button className="small-btn danger text" onClick={() => handleDeleteEvent(event.id)}>Delete</button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="empty-state">No events found. Create your first event to get started.</td>
+                                    <td colSpan={readOnly ? 4 : 5} className="empty-state">No events found. Create your first event to get started.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -186,7 +185,7 @@ const EventsPage = () => {
                 </div>
             </div>
 
-            {showAddModal && (
+            {!readOnly && showAddModal && (
                 <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <h3>Create New Event</h3>

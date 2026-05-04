@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import BulkMessageModal from './BulkMessageModal';
+import { getAuthHeaders } from '../../services/api';
 
 // Styles object to replace Tailwind
 const styles = {
@@ -117,7 +118,7 @@ const AttendanceCategoryView = ({ data }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-admin-key': localStorage.getItem('adminKey') || ''
+                    ...getAuthHeaders()
                 },
                 body: JSON.stringify(messageData)
             });

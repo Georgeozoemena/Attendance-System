@@ -1,6 +1,11 @@
 const sqlite3 = require('sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
+// bcryptjs is installed in task 2; guard against it not being present yet
+let bcrypt;
+try { bcrypt = require('bcryptjs'); } catch(e) { console.warn('bcryptjs not yet installed, skipping seed'); }
 
 const dbPath = path.join(__dirname, '..', 'data', 'attendance.db');
 const dataDir = path.dirname(dbPath);
@@ -123,6 +128,36 @@ async function initializeDatabase() {
             leaderId TEXT,
             leaderName TEXT,
             createdAt TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('developer','church_admin','followup_head','pastor','usher')),
+            is_active INTEGER NOT NULL DEFAULT 1,
+            last_login TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            created_by TEXT REFERENCES users(id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS followup_logs (
+            id TEXT PRIMARY KEY,
+            member_id TEXT NOT NULL,
+            action_type TEXT NOT NULL CHECK(action_type IN ('called','visited','note','resolved')),
+            note TEXT,
+            done_by TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','in_progress','resolved')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )`,
+        `CREATE TABLE IF NOT EXISTS audit_logs (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            action TEXT NOT NULL CHECK(action IN ('create','update','delete','export')),
+            module TEXT NOT NULL,
+            target_id TEXT,
+            ip_address TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )`
     ];
 
@@ -150,7 +185,41 @@ async function initializeDatabase() {
         try { await dbRun(sql); } catch (e) { /* column already exists */ }
     }
 
+    await seedUsers();
     console.log('Database initialized');
+}
+
+async function seedUsers() {
+    try {
+        if (!bcrypt) {
+            console.warn('bcryptjs not available, skipping user seed');
+            return;
+        }
+
+        const row = await dbGet('SELECT COUNT(*) as count FROM users');
+        if (row && row.count > 0) return; // idempotent — already seeded
+
+        const seedAccounts = [
+            { email: 'developer@dominioncity.com', password: 'Dev@2025!',    name: 'Developer',    role: 'developer' },
+            { email: 'admin@dominioncity.com',     password: 'Admin@2025!',  name: 'Church Admin', role: 'church_admin' },
+            { email: 'followup@dominioncity.com',  password: 'Follow@2025!', name: 'Follow-Up Head', role: 'followup_head' },
+            { email: 'pastor@dominioncity.com',    password: 'Pastor@2025!', name: 'Pastor',       role: 'pastor' },
+            { email: 'usher@dominioncity.com',     password: 'Usher@2025!',  name: 'Usher',        role: 'usher' },
+        ];
+
+        for (const account of seedAccounts) {
+            const password_hash = await bcrypt.hash(account.password, 12);
+            const id = uuidv4();
+            await dbRun(
+                `INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)`,
+                [id, account.name, account.email, password_hash, account.role]
+            );
+        }
+
+        console.log('Seed users created successfully');
+    } catch (err) {
+        console.error('seedUsers error:', err.message);
+    }
 }
 
 // Export the ready promise so index.js can wait before starting the server
