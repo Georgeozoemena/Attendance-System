@@ -8,11 +8,10 @@ const { dbGet } = require('../database');
  * to `req.user`.
  */
 async function authMiddleware(req, res, next) {
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = process.env.JWT_SECRET || 'dev-local-secret-change-in-production';
 
-    if (!jwtSecret) {
-        console.error('FATAL: JWT_SECRET environment variable is not set');
-        return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET not set' });
+    if (!process.env.JWT_SECRET) {
+        console.warn('Warning: JWT_SECRET not set, using default dev secret');
     }
 
     const authHeader = req.headers['authorization'];
